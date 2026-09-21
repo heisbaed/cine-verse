@@ -1,0 +1,217 @@
+@import 'tailwindcss';
+
+@theme {
+  --color-background: #09090B;
+  --color-surface: #121218;
+  --color-gold: #E8C66A;
+  --color-ruby: #B33951;
+  --color-electric: #4D9FFF;
+  --color-emerald: #00C896;
+  --color-white: #f8f4ea;
+  --font-family-sans: 'Inter', system-ui, sans-serif;
+}
+
+:root {
+  color-scheme: dark;
+  scroll-behavior: smooth;
+}
+
+:root[data-theme='light'] {
+  color-scheme: light;
+  --color-background: #f3efe7;
+  --color-surface: #fffaf2;
+  --color-gold: #9a6715;
+  --color-ruby: #aa3650;
+  --color-electric: #286fc2;
+  --color-emerald: #087d61;
+  --color-white: #211c25;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  background-color: var(--color-background);
+  color: var(--color-white);
+  min-height: 100vh;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+::selection {
+  background: color-mix(in srgb, var(--color-gold) 35%, transparent);
+  color: #fff;
+}
+
+.cinema-title {
+  font-family: Georgia, 'Times New Roman', serif;
+  text-wrap: balance;
+}
+
+.hero-vignette {
+  box-shadow: inset 0 0 180px 45px color-mix(in srgb, var(--color-background) 48%, transparent);
+}
+
+.media-on-dark {
+  --color-background: #09090b;
+  --color-surface: #121218;
+  --color-white: #f8f4ea;
+  color: var(--color-white);
+}
+
+.ambient-light {
+  opacity: 0.38;
+  background:
+    radial-gradient(circle at 12% 18%, color-mix(in srgb, var(--color-gold) 9%, transparent), transparent 28%),
+    radial-gradient(circle at 86% 74%, color-mix(in srgb, var(--color-ruby) 8%, transparent), transparent 30%);
+  animation: ambient-shift 18s ease-in-out infinite alternate;
+}
+
+:root[data-theme='light'] .ambient-light {
+  opacity: 0.55;
+}
+
+:root[data-theme='light'] .grain {
+  opacity: 0.035;
+}
+
+:root[data-theme='light'] .text-background {
+  color: #151116;
+}
+
+.cinematic-particles {
+  background-image:
+    radial-gradient(circle, rgba(255, 255, 255, 0.34) 0 1px, transparent 1.5px),
+    radial-gradient(circle, rgba(232, 198, 106, 0.24) 0 1px, transparent 1.5px);
+  background-position: 0 0, 32px 47px;
+  background-size: 86px 86px, 119px 119px;
+  mask-image: linear-gradient(to bottom, transparent, black 20%, black 78%, transparent);
+  animation: particle-drift 28s linear infinite;
+}
+
+.cinematic-orb {
+  filter: blur(90px);
+  opacity: 0.2;
+  mix-blend-mode: screen;
+  animation: cinematic-float 13s ease-in-out infinite alternate;
+}
+
+.cinematic-orb-gold {
+  background: var(--color-gold);
+}
+
+.cinematic-orb-ruby {
+  background: var(--color-ruby);
+  animation-delay: -5s;
+}
+
+.hero-rating-badge {
+  box-shadow:
+    0 0 35px color-mix(in srgb, var(--color-gold) 13%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+@keyframes ambient-shift {
+  from {
+    transform: translate3d(-1.5%, -1%, 0) scale(1);
+  }
+  to {
+    transform: translate3d(1.5%, 1%, 0) scale(1.05);
+  }
+}
+
+@keyframes particle-drift {
+  from {
+    transform: translate3d(0, 0, 0);
+  }
+  to {
+    transform: translate3d(32px, -45px, 0);
+  }
+}
+
+@keyframes cinematic-float {
+  from {
+    transform: translate3d(-2%, -3%, 0) scale(0.94);
+  }
+  to {
+    transform: translate3d(4%, 4%, 0) scale(1.08);
+  }
+}
+
+.splash-glow {
+  background: radial-gradient(
+    circle,
+    color-mix(in srgb, var(--color-gold) 16%, transparent),
+    transparent 67%
+  );
+}
+
+.mobile-safe-bottom {
+  padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
+}
+
+.grain {
+  pointer-events: none;
+  position: fixed;
+  inset: 0;
+  opacity: 0.11;
+  z-index: 1;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 240 240' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3'/%3E%3C/filter%3E%3Crect width='240' height='240' filter='url(%23n)' opacity='0.55'/%3E%3C/svg%3E");
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-background);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-surface);
+  border-radius: 999px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    scroll-behavior: auto;
+  }
+
+  .ambient-light,
+  .cinematic-particles,
+  .cinematic-orb {
+    animation: none;
+  }
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #2a2a35;
+}
+
+@utility scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+@utility line-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+@utility line-clamp-3 {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}

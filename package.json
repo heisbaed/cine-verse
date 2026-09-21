@@ -1,0 +1,38 @@
+{
+  "name": "cine-verse",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 0.0.0.0",
+    "build": "vite build",
+    "preview": "vite preview --host 0.0.0.0",
+    "deploy:staging": "npm run build && firebase deploy --only hosting:mainsite --project cine-verse-231ad --non-interactive",
+    "deploy:launch": "firebase deploy --only hosting:alternate --project cine-verse-231ad --non-interactive",
+    "deploy:release": "npm run build && firebase deploy --config firebase.release.json --only hosting:mainsite,hosting:alternate --project cine-verse-231ad --non-interactive"
+  },
+  "dependencies": {
+    "@tailwindcss/postcss": "^4.3.2",
+    "@tanstack/react-query": "^5.101.2",
+    "axios": "^1.18.1",
+    "firebase": "^12.16.0",
+    "framer-motion": "latest",
+    "hls.js": "^1.6.16",
+    "lucide-react": "latest",
+    "react": "latest",
+    "react-dom": "latest",
+    "react-router-dom": "^7.18.1",
+    "vite": "latest",
+    "zustand": "^5.0.14"
+  },
+  "devDependencies": {
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^6.0.3",
+    "autoprefixer": "^10.5.2",
+    "postcss": "^8.5.16",
+    "tailwindcss": "^4.3.2",
+    "typescript": "^7.0.2",
+    "vite-plugin-pwa": "^1.3.0"
+  }
+}

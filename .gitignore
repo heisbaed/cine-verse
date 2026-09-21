@@ -1,0 +1,20 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+
+# Env secrets (never commit real keys — see .env.example)
+.env
+.env.local
+.env.*.local
+
+# Firebase cache & runtime
+.firebase/
+*.log
+
+# Editor & OS
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db

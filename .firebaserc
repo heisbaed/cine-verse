@@ -1,0 +1,18 @@
+{
+  "projects": {
+    "default": "cine-verse-231ad"
+  },
+  "targets": {
+    "cine-verse-231ad": {
+      "hosting": {
+        "mainsite": [
+          "cine-verse-231ad"
+        ],
+        "alternate": [
+          "ourcineverse"
+        ]
+      }
+    }
+  },
+  "etags": {}
+}
