@@ -22,7 +22,7 @@ export const APP_RELEASE: AppRelease = {
   minAndroid: 'Android 8.0+',
   updatedAt: 'September 2026',
   apkUrl:
-    'https://github.com/heisbaed/cine-verse/releases/download/v1.0.0/cine-verse-v1.0.0.apk.apk',
+    'https://github.com/heisbaed/cine-verse/releases/download/v1.0.0/cine-verse-v1.0.0.apk',
   apkFileName: 'cine-verse-v1.0.0.apk',
   changelog: [
     'Browse trending movies, TV series, and upcoming releases',
