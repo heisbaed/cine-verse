@@ -5,8 +5,8 @@ A cinematic real-time movie encyclopedia built with React + Vite.
 ## Run locally
 ```bash
 npm install
-cp .env.example .env
-# Add your TMDB API key inside .env
+# Create .env with your own TMDB key (never commit it)
+# VITE_TMDB_API_KEY=your_key_here
 npm run dev
 ```
 

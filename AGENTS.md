@@ -35,9 +35,9 @@ npm run preview  # preview build on 0.0.0.0
 
 ## TMDB API
 
-- API key via `VITE_TMDB_API_KEY` env var
+- API key via `VITE_TMDB_API_KEY` env var (local `.env` only, never committed)
 - `hasApiKey()` returns false if falsy → `SetupScreen` renders on Home, other pages show fallback
-- `.env.example` contains a real key
+- No key files are committed — `.env` is gitignored, there is no `.env.example`
 - `getImageUrl(path, size)` handles null paths with a fallback Unsplash image
 - All 16 TMDB endpoints in `src/api/tmdb.ts` — trending, popular, top_rated, upcoming, now_playing, details, credits, videos, similar, recommendations, reviews, search, discover, genres, external_ids, watch_providers
 
