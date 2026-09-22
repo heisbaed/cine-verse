@@ -6,10 +6,10 @@
     "cine-verse-231ad": {
       "hosting": {
         "mainsite": [
-          "cine-verse-231ad"
+          "ourcineverse"
         ],
         "alternate": [
-          "ourcineverse"
+          "cine-verse-231ad"
         ]
       }
     }

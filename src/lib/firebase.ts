@@ -2,7 +2,7 @@ import { getApp, getApps, initializeApp } from 'firebase/app';
 
 const firebaseConfig = {
   apiKey: 'AIzaSyCygvX22E_O1PZv30G34U6H4lGl8v8whkM',
-  authDomain: 'cine-verse-231ad.firebaseapp.com',
+  authDomain: 'ourcineverse.web.app',
   databaseURL: 'https://cine-verse-231ad-default-rtdb.firebaseio.com',
   projectId: 'cine-verse-231ad',
   storageBucket: 'cine-verse-231ad.firebasestorage.app',

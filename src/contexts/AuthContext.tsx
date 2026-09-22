@@ -30,6 +30,32 @@ interface CloudUserData {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
+const getAuthErrorMessage = (code: string): string => {
+  switch (code) {
+    case 'auth/popup-closed-by-user':
+    case 'auth/cancelled-popup-request':
+      return 'Sign-in was closed before completing. Please try again.';
+    case 'auth/popup-blocked':
+      return 'Your browser blocked the sign-in popup. Trying a full-page redirect instead...';
+    case 'auth/unauthorized-domain':
+      return 'This website domain is not authorized for Google sign-in. Add it in Firebase Console > Authentication > Settings > Authorized domains.';
+    case 'auth/operation-not-allowed':
+      return 'Google sign-in is not enabled for this Firebase project. Enable it in Firebase Console > Authentication > Sign-in method.';
+    case 'auth/network-request-failed':
+      return 'Network error during sign-in. Check your connection and try again.';
+    case 'auth/web-storage-unsupported':
+    case 'auth/operation-not-supported-in-this-environment':
+      return 'This browser cannot open a sign-in popup. Trying a full-page redirect instead...';
+    default:
+      return 'Google sign-in failed. Please try again.';
+  }
+};
+
+const shouldFallbackToRedirect = (code: string): boolean =>
+  code === 'auth/popup-blocked' ||
+  code === 'auth/operation-not-supported-in-this-environment' ||
+  code === 'auth/web-storage-unsupported';
+
 const isMediaItem = (value: unknown): value is MediaItem => {
   if (!value || typeof value !== 'object') return false;
   const item = value as Record<string, unknown>;
@@ -164,9 +190,15 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({
           auth,
           firebaseAuth.browserLocalPersistence,
         );
-        void firebaseAuth.getRedirectResult(auth).catch(() => {
+        void firebaseAuth.getRedirectResult(auth).catch((resultError) => {
+          const resultCode =
+            typeof resultError === 'object' &&
+            resultError &&
+            'code' in resultError
+              ? String(resultError.code)
+              : '';
           if (!disposed) {
-            setAuthError('Google sign-in could not be completed.');
+            setAuthError(getAuthErrorMessage(resultCode));
           }
         });
 
@@ -211,14 +243,11 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({
         typeof error === 'object' && error && 'code' in error
           ? String(error.code)
           : '';
-      if (
-        code === 'auth/popup-blocked' ||
-        code === 'auth/operation-not-supported-in-this-environment'
-      ) {
+      if (shouldFallbackToRedirect(code)) {
         await firebaseAuth.signInWithRedirect(auth, provider);
         return;
       }
-      setAuthError('Google sign-in failed. Please try again.');
+      setAuthError(getAuthErrorMessage(code));
     }
   };
 

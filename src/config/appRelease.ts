@@ -9,20 +9,19 @@ export interface AppRelease {
   changelog: string[];
 }
 
-// DIRECT DOWNLOAD VIA GITHUB RELEASES (free, 2GB per file):
+// DIRECT DOWNLOAD VIA EAS BUILD ARTIFACT:
 // The Download button points straight at the .apk file URL below.
-// Click = browser downloads immediately, no GitHub page opens.
-// For v2: upload the new APK to a new release (tag v2.0.0) and update
-// version + apkUrl here.
+// Click = browser downloads immediately, no extra page opens.
+// Rebuilt APK => paste the new artifact URL here (and update version/fileSize).
 
 export const APP_RELEASE: AppRelease = {
   version: '1.0.0',
   buildNumber: '1',
-  fileSize: '~112 MB',
+  fileSize: '~116 MB',
   minAndroid: 'Android 8.0+',
   updatedAt: 'September 2026',
   apkUrl:
-    'https://github.com/heisbaed/cine-verse/releases/download/v1.0.0/cine-verse-v1.0.0.apk',
+    'https://expo.dev/artifacts/eas/jTYOnTqyhrgm0lSbs68kRvUJlardzd88enureChUFJQ.apk',
   apkFileName: 'cine-verse-v1.0.0.apk',
   changelog: [
     'Browse trending movies, TV series, and upcoming releases',
