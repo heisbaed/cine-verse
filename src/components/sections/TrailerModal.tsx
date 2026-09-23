@@ -8,6 +8,8 @@ interface TrailerModalProps {
   onClose: () => void;
   videos: Video[];
   title: string;
+  /** Videos are still being fetched; show a spinner until data lands. */
+  loading?: boolean;
 }
 
 const TrailerModal: React.FC<TrailerModalProps> = ({
@@ -15,6 +17,7 @@ const TrailerModal: React.FC<TrailerModalProps> = ({
   onClose,
   videos,
   title,
+  loading = false,
 }) => {
   const trailer =
     videos.find(
@@ -23,6 +26,8 @@ const TrailerModal: React.FC<TrailerModalProps> = ({
     videos.find((v) => v.site === 'YouTube' && v.type === 'Trailer') ||
     videos.find((v) => v.site === 'YouTube') ||
     videos[0];
+
+  const hasYouTube = Boolean(trailer && trailer.site === 'YouTube');
 
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
@@ -42,7 +47,7 @@ const TrailerModal: React.FC<TrailerModalProps> = ({
     };
   }, [isOpen, handleKeyDown]);
 
-  if (!trailer || trailer.site !== 'YouTube') return null;
+  if (!isOpen) return null;
 
   return (
     <AnimatePresence>
@@ -73,13 +78,31 @@ const TrailerModal: React.FC<TrailerModalProps> = ({
             >
               <X size={24} />
             </button>
-            <iframe
-              src={`https://www.youtube.com/embed/${trailer.key}?autoplay=1&rel=0`}
-              title={`${trailer.name} - ${title}`}
-              className="w-full h-full"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-              allowFullScreen
-            />
+            {hasYouTube ? (
+              <iframe
+                src={`https://www.youtube.com/embed/${trailer.key}?autoplay=1&rel=0`}
+                title={`${trailer.name} - ${title}`}
+                className="w-full h-full"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+              />
+            ) : loading ? (
+              <div className="grid h-full w-full place-items-center bg-surface">
+                <div className="flex flex-col items-center gap-3 text-white/70">
+                  <div className="h-10 w-10 animate-spin rounded-full border-2 border-white/20 border-t-gold" />
+                  <p className="text-sm font-medium">Loading trailer…</p>
+                </div>
+              </div>
+            ) : (
+              <div className="grid h-full w-full place-items-center bg-surface">
+                <div className="flex max-w-sm flex-col items-center gap-3 px-6 text-center">
+                  <p className="text-lg font-bold">No trailer yet</p>
+                  <p className="text-sm text-white/60">
+                    This title has no YouTube trailer available right now.
+                  </p>
+                </div>
+              </div>
+            )}
           </motion.div>
         </motion.div>
       )}

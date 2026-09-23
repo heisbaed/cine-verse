@@ -5,6 +5,7 @@ import { motion, useMotionValue, useSpring } from 'framer-motion';
 import { Bookmark, BookmarkCheck, Play, Star } from 'lucide-react';
 import { getImageUrl, getMovieVideos, getTVVideos } from '@/api/tmdb';
 import { useWatchlistStore } from '@/store/watchlistStore';
+import TrailerModal from '@/components/sections/TrailerModal';
 import type { MediaItem } from '@/types/tmdb';
 import { getMediaDate, getMediaTitle, getMediaType } from '@/utils/media';
 
@@ -32,17 +33,18 @@ const MovieCard: React.FC<MovieCardProps> = ({ movie, index = 0 }) => {
   const releaseBadge = getReleaseBadge(date);
   const inWatchlist = isInWatchlist(movie.id, mediaType);
   const [previewRequested, setPreviewRequested] = useState(false);
+  const [trailerOpen, setTrailerOpen] = useState(false);
   const previewTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const rotateXValue = useMotionValue(0);
   const rotateYValue = useMotionValue(0);
   const rotateX = useSpring(rotateXValue, { stiffness: 220, damping: 24 });
   const rotateY = useSpring(rotateYValue, { stiffness: 220, damping: 24 });
 
-  const { data: previewVideos } = useQuery({
+  const { data: previewVideos, isLoading: trailerLoading } = useQuery({
     queryKey: ['cardTrailer', mediaType, movie.id],
     queryFn: () =>
       mediaType === 'tv' ? getTVVideos(movie.id) : getMovieVideos(movie.id),
-    enabled: previewRequested,
+    enabled: previewRequested || trailerOpen,
     staleTime: 1000 * 60 * 30,
   });
 
@@ -161,6 +163,22 @@ const MovieCard: React.FC<MovieCardProps> = ({ movie, index = 0 }) => {
           </span>
         )}
 
+        {trailer && (
+          <button
+            onClick={(event) => {
+              event.preventDefault();
+              event.stopPropagation();
+              setPreviewRequested(true);
+              setTrailerOpen(true);
+            }}
+            className="absolute bottom-4 right-4 z-20 inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-background/70 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.14em] text-white opacity-0 shadow-lg backdrop-blur-md transition-all duration-300 hover:bg-gold hover:text-background focus:outline-none focus:ring-2 focus:ring-gold/50 group-hover:opacity-100"
+            aria-label={`Play ${title} trailer`}
+          >
+            <Play size={11} fill="currentColor" aria-hidden="true" />
+            Trailer
+          </button>
+        )}
+
         <div className="absolute inset-x-0 bottom-0 p-4">
           <h3 className="line-clamp-2 text-lg font-bold leading-tight">
             {title}
@@ -194,6 +212,14 @@ const MovieCard: React.FC<MovieCardProps> = ({ movie, index = 0 }) => {
           <Bookmark size={19} aria-hidden="true" />
         )}
       </button>
+
+      <TrailerModal
+        isOpen={trailerOpen}
+        onClose={() => setTrailerOpen(false)}
+        videos={previewVideos?.results ?? []}
+        title={title}
+        loading={trailerLoading}
+      />
     </motion.div>
   );
 };

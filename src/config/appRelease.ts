@@ -9,25 +9,31 @@ export interface AppRelease {
   changelog: string[];
 }
 
-// DIRECT DOWNLOAD VIA EAS BUILD ARTIFACT:
+// DIRECT DOWNLOAD VIA GITHUB RELEASES:
 // The Download button points straight at the .apk file URL below.
 // Click = browser downloads immediately, no extra page opens.
-// Rebuilt APK => paste the new artifact URL here (and update version/fileSize).
+// Rebuilt APK => re-upload to a new GitHub release, then paste the
+// new browser_download_url here (and update version/fileSize).
 
 export const APP_RELEASE: AppRelease = {
-  version: '1.0.0',
-  buildNumber: '1',
-  fileSize: '~116 MB',
+  version: '1.1.0',
+  buildNumber: '2',
+  fileSize: '~124 MB',
   minAndroid: 'Android 8.0+',
   updatedAt: 'September 2026',
   apkUrl:
-    'https://expo.dev/artifacts/eas/jTYOnTqyhrgm0lSbs68kRvUJlardzd88enureChUFJQ.apk',
-  apkFileName: 'cine-verse-v1.0.0.apk',
+    'https://github.com/heisbaed/cine-verse/releases/download/v1.1.0/cine-verse-v1.1.0.apk',
+  apkFileName: 'cine-verse-v1.1.0.apk',
   changelog: [
-    'Browse trending movies, TV series, and upcoming releases',
-    'Search with instant suggestions + genre and year filters',
-    'Save titles to a synced watchlist',
-    'Offline-friendly PWA caching for posters and details',
+    'New app icon — a cinema clapperboard mark (replaces the old play button)',
+    'Cine AI moved to the center of the bottom nav with role-labelled bubbles and quick-nav chips',
+    'Cine AI now knows what is trending, in theatres, and releasing soon via live TMDB data',
+    'Fixed accent themes: all 10 presets and the hue slider now apply correct colors',
+    'Resume playback now seeks to your saved spot instead of starting over',
+    'Notifications: scheduled reminders now actually fire on Android',
+    'Higher theme contrast so text stays readable in every dark/light scheme',
+    'Grid cards play trailers on click (YouTube modal)',
+    'About moved into Settings; bottom nav is now Home · Global · Cine AI · Upcoming · Bookmarks',
   ],
 };
 
