@@ -16,24 +16,23 @@ export interface AppRelease {
 // new browser_download_url here (and update version/fileSize).
 
 export const APP_RELEASE: AppRelease = {
-  version: '1.1.0',
-  buildNumber: '2',
-  fileSize: '~124 MB',
+  version: '1.1.1',
+  buildNumber: '3',
+  fileSize: '~45 MB',
   minAndroid: 'Android 8.0+',
-  updatedAt: 'September 2026',
+  updatedAt: 'October 2026',
   apkUrl:
-    'https://github.com/heisbaed/cine-verse/releases/download/v1.1.0/cine-verse-v1.1.0.apk',
-  apkFileName: 'cine-verse-v1.1.0.apk',
+    'https://github.com/heisbaed/cine-verse/releases/download/v1.1.1/cine-verse-v1.1.1.apk',
+  apkFileName: 'cine-verse-v1.1.1.apk',
   changelog: [
-    'New app icon — a cinema clapperboard mark (replaces the old play button)',
-    'Cine AI moved to the center of the bottom nav with role-labelled bubbles and quick-nav chips',
-    'Cine AI now knows what is trending, in theatres, and releasing soon via live TMDB data',
-    'Fixed accent themes: all 10 presets and the hue slider now apply correct colors',
-    'Resume playback now seeks to your saved spot instead of starting over',
-    'Notifications: scheduled reminders now actually fire on Android',
-    'Higher theme contrast so text stays readable in every dark/light scheme',
-    'Grid cards play trailers on click (YouTube modal)',
-    'About moved into Settings; bottom nav is now Home · Global · Cine AI · Upcoming · Bookmarks',
+    'In-app updates — new APK versions download and install without leaving the app',
+    'Cine AI fixed with faster replies, clear error messages, and Try again',
+    'Torrent downloads now show every result with pages, most seeders first',
+    'Two new servers (VidFast, VidSrc) — six playback choices in total',
+    'Play, Download, and Trailer are now separate buttons',
+    'Episode torrents refresh automatically when you switch episodes',
+    'Upcoming shows future releases only, earliest first',
+    'APK shrunk from ~124 MB to ~45 MB',
   ],
 };
 
