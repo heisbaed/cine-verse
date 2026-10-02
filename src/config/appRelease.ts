@@ -16,23 +16,22 @@ export interface AppRelease {
 // new browser_download_url here (and update version/fileSize).
 
 export const APP_RELEASE: AppRelease = {
-  version: '1.1.1',
-  buildNumber: '3',
+  version: '1.1.2',
+  buildNumber: '4',
   fileSize: '~45 MB',
   minAndroid: 'Android 8.0+',
   updatedAt: 'October 2026',
   apkUrl:
-    'https://github.com/heisbaed/cine-verse/releases/download/v1.1.1/cine-verse-v1.1.1.apk',
-  apkFileName: 'cine-verse-v1.1.1.apk',
+    'https://github.com/heisbaed/cine-verse/releases/download/v1.1.2/cine-verse-v1.1.2.apk',
+  apkFileName: 'cine-verse-v1.1.2.apk',
   changelog: [
-    'In-app updates — new APK versions download and install without leaving the app',
-    'Cine AI fixed with faster replies, clear error messages, and Try again',
-    'Torrent downloads now show every result with pages, most seeders first',
-    'Two new servers (VidFast, VidSrc) — six playback choices in total',
-    'Play, Download, and Trailer are now separate buttons',
-    'Episode torrents refresh automatically when you switch episodes',
-    'Upcoming shows future releases only, earliest first',
-    'APK shrunk from ~124 MB to ~45 MB',
+    'Working picture-in-picture — shrink any video into a floating window',
+    'Follow shows and get notified when new episodes air',
+    'App lock — fingerprint or PIN on every launch (optional)',
+    'Cinema stats — time watched, top genres, most-watched title',
+    'Home now opens with picks based on what you watched',
+    'Vidlink moved last after hanging; slow networks get 30s per server',
+    'Cine AI input floats above the keyboard like WhatsApp',
   ],
 };
 
