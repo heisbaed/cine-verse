@@ -16,14 +16,14 @@ export interface AppRelease {
 // new browser_download_url here (and update version/fileSize).
 
 export const APP_RELEASE: AppRelease = {
-  version: '1.2.1',
-  buildNumber: '6',
+  version: '1.2.2',
+  buildNumber: '7',
   fileSize: '~45 MB',
   minAndroid: 'Android 8.0+',
   updatedAt: 'October 2026',
   apkUrl:
-    'https://github.com/heisbaed/cine-verse/releases/download/v1.2.1/cine-verse-v1.2.1.apk',
-  apkFileName: 'cine-verse-v1.2.1.apk',
+    'https://github.com/heisbaed/cine-verse/releases/download/v1.2.2/cine-verse-v1.2.2.apk',
+  apkFileName: 'cine-verse-v1.2.2.apk',
   changelog: [
     'Cine AI now grounds recommendations in live TMDB results',
     'Recommendation cards now match the exact titles and posters in the answer',
