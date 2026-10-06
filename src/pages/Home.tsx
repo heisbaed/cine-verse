@@ -1,15 +1,15 @@
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { Play, Star } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import {
-  getTrendingMovies,
-  getPopularMovies,
-  getTopRatedMovies,
-  getUpcomingMovies,
+  getImageUrl,
+  getMovieCredits,
   getNowPlayingMovies,
+  getTopRatedMovies,
+  getTrendingMovies,
   getTrendingTVShows,
-  getPopularTVShows,
-  getTopRatedTVShows,
-  getOnTheAirTVShows,
+  getUpcomingMovies,
   hasApiKey,
 } from '@/api/tmdb';
 import HeroCarousel from '@/components/sections/HeroCarousel';
@@ -26,8 +26,7 @@ const fallbackMovies: Movie[] = [
     original_title: 'Deadpool & Wolverine',
     poster_path: '/8cdWjvZQUExUUTzyp4t6EDMubfO.jpg',
     backdrop_path: '/yDHYTfA3R0jFYba16jBB1ef8oIt.jpg',
-    overview:
-      'A high-energy superhero adventure crossing timelines and chaos.',
+    overview: 'A high-energy superhero adventure crossing timelines and chaos.',
     release_date: '2024-07-24',
     vote_average: 7.6,
     vote_count: 7300,
@@ -37,203 +36,92 @@ const fallbackMovies: Movie[] = [
     video: false,
     popularity: 1000,
   },
-  {
-    id: 1022789,
-    title: 'Inside Out 2',
-    original_title: 'Inside Out 2',
-    poster_path: '/vpnVM9B6NMmQpWeZvzLvDESb2QY.jpg',
-    backdrop_path: '/stKGOm8UyhuLPR9sZLjs5AkmncA.jpg',
-    overview:
-      'Riley enters teenage years as new emotions arrive at headquarters.',
-    release_date: '2024-06-11',
-    vote_average: 7.6,
-    vote_count: 5400,
-    genre_ids: [16, 10751, 12],
-    original_language: 'en',
-    adult: false,
-    video: false,
-    popularity: 950,
-  },
-  {
-    id: 823464,
-    title: 'Godzilla x Kong: The New Empire',
-    original_title: 'Godzilla x Kong: The New Empire',
-    poster_path: '/z1p34vh7dEOnLDmyCrlUVLuoDzd.jpg',
-    backdrop_path: '/j3Z3XktmWB1VhsS8iXNcrR86PXi.jpg',
-    overview:
-      'Two ancient titans face a hidden threat from deep within the Earth.',
-    release_date: '2024-03-27',
-    vote_average: 7.1,
-    vote_count: 3900,
-    genre_ids: [878, 28, 12],
-    original_language: 'en',
-    adult: false,
-    video: false,
-    popularity: 900,
-  },
 ];
 
 const Home: React.FC = () => {
-  const recentlyViewed = useViewHistoryStore(
-    (state) => state.recentlyViewed,
-  );
+  const recentlyViewed = useViewHistoryStore((state) => state.recentlyViewed);
+  const apiReady = hasApiKey();
 
   useSEO({
     title: '',
-    description:
-      'Discover trending movies and TV series from around the world on Cine-verse.',
+    description: 'Discover trending movies and TV series from around the world on Cine-verse.',
   });
 
-  const { data: trendingData, isLoading: trendingLoading } = useQuery({
-    queryKey: ['trendingMovies'],
-    queryFn: getTrendingMovies,
-    enabled: hasApiKey(),
+  const trending = useQuery({ queryKey: ['trendingMovies'], queryFn: getTrendingMovies, enabled: apiReady });
+  const television = useQuery({ queryKey: ['trendingTVShows'], queryFn: getTrendingTVShows, enabled: apiReady });
+  const nowPlaying = useQuery({ queryKey: ['nowPlayingMovies'], queryFn: getNowPlayingMovies, enabled: apiReady });
+  const upcoming = useQuery({ queryKey: ['upcomingMovies'], queryFn: getUpcomingMovies, enabled: apiReady });
+  const topRated = useQuery({ queryKey: ['topRatedMovies'], queryFn: getTopRatedMovies, enabled: apiReady });
+
+  const trendingMovies = apiReady ? trending.data?.results || [] : fallbackMovies;
+  const nowPlayingMovies = apiReady ? nowPlaying.data?.results || [] : fallbackMovies;
+  const featuredMovie = trendingMovies[0];
+  const featuredCredits = useQuery({
+    queryKey: ['homeSpotlightCredits', featuredMovie?.id],
+    queryFn: () => getMovieCredits(featuredMovie.id),
+    enabled: apiReady && !!featuredMovie?.id,
   });
+  const actors = featuredCredits.data?.cast.filter((person) => person.profile_path).slice(0, 3) || [];
 
-  const { data: popularData, isLoading: popularLoading } = useQuery({
-    queryKey: ['popularMovies'],
-    queryFn: getPopularMovies,
-    enabled: hasApiKey(),
-  });
-
-  const { data: topRatedData, isLoading: topRatedLoading } = useQuery({
-    queryKey: ['topRatedMovies'],
-    queryFn: getTopRatedMovies,
-    enabled: hasApiKey(),
-  });
-
-  const { data: upcomingData, isLoading: upcomingLoading } = useQuery({
-    queryKey: ['upcomingMovies'],
-    queryFn: getUpcomingMovies,
-    enabled: hasApiKey(),
-  });
-
-  const { data: nowPlayingData, isLoading: nowPlayingLoading } = useQuery({
-    queryKey: ['nowPlayingMovies'],
-    queryFn: getNowPlayingMovies,
-    enabled: hasApiKey(),
-  });
-
-  const { data: trendingTVData, isLoading: trendingTVLoading } = useQuery({
-    queryKey: ['trendingTVShows'],
-    queryFn: getTrendingTVShows,
-    enabled: hasApiKey(),
-  });
-
-  const { data: popularTVData, isLoading: popularTVLoading } = useQuery({
-    queryKey: ['popularTVShows'],
-    queryFn: getPopularTVShows,
-    enabled: hasApiKey(),
-  });
-
-  const { data: topRatedTVData, isLoading: topRatedTVLoading } = useQuery({
-    queryKey: ['topRatedTVShows'],
-    queryFn: getTopRatedTVShows,
-    enabled: hasApiKey(),
-  });
-
-  const { data: onTheAirTVData, isLoading: onTheAirTVLoading } = useQuery({
-    queryKey: ['onTheAirTVShows'],
-    queryFn: getOnTheAirTVShows,
-    enabled: hasApiKey(),
-  });
-
-  const trendingMovies = hasApiKey()
-    ? trendingData?.results || []
-    : fallbackMovies;
-  const popularMovies = hasApiKey()
-    ? popularData?.results || []
-    : fallbackMovies;
-  const topRatedMovies = hasApiKey()
-    ? topRatedData?.results || []
-    : fallbackMovies;
-  const upcomingMovies = hasApiKey()
-    ? upcomingData?.results || []
-    : fallbackMovies;
-  const nowPlayingMovies = hasApiKey()
-    ? nowPlayingData?.results || []
-    : fallbackMovies;
-  const trendingTVShows = trendingTVData?.results || [];
-  const popularTVShows = popularTVData?.results || [];
-  const topRatedTVShows = topRatedTVData?.results || [];
-  const onTheAirTVShows = onTheAirTVData?.results || [];
-
-  if (!hasApiKey()) {
-    return <SetupScreen />;
-  }
+  if (!apiReady) return <SetupScreen />;
 
   return (
     <div className="min-h-screen">
       <HeroCarousel movies={trendingMovies.slice(0, 5)} />
 
-      <div id="discover" className="scroll-mt-24 space-y-14 pb-24 pt-16">
-        <div className="mx-auto max-w-7xl px-6">
-          <div className="max-w-2xl">
-            <p className="mb-3 text-xs font-black uppercase tracking-[0.32em] text-gold">
-              The curtain rises here
-            </p>
-            <h2 className="cinema-title text-4xl font-black leading-tight sm:text-6xl">
-              The screen is yours.
-            </h2>
-            <p className="mt-4 text-base leading-relaxed text-white/55 sm:text-lg">
-              Start with what the world is watching, then wander through every
-              corner of cinema at your own pace.
-            </p>
+      <section className="mx-auto max-w-[1500px] px-5 py-10 sm:px-8 lg:px-10">
+        <div className="grid items-start gap-10 xl:grid-cols-[minmax(0,1.2fr)_minmax(360px,0.8fr)]">
+          <div className="min-w-0">
+            <div className="flex items-center justify-between gap-4">
+              <h2 className="text-lg font-black">You might like</h2>
+              <Link to="/explore" className="text-xs font-bold text-gold hover:underline">See all</Link>
+            </div>
+            <div className="mt-5 grid gap-3 sm:grid-cols-2">
+              {nowPlayingMovies.slice(0, 4).map((movie) => (
+                <Link key={movie.id} to={`/movie/${movie.id}`} className="group overflow-hidden rounded-xl border border-white/10 bg-surface">
+                  <img src={getImageUrl(movie.backdrop_path, 'w780')} alt="" className="aspect-[16/8] w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]" />
+                  <div className="flex min-w-0 items-center gap-3 p-3">
+                    <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-gold text-black"><Play size={11} fill="currentColor" /></span>
+                    <span className="min-w-0 flex-1"><strong className="block truncate text-sm">{movie.title}</strong><span className="text-[10px] text-white/40">{movie.release_date?.split('-')[0] || 'TBA'} · Movie</span></span>
+                    <span className="inline-flex shrink-0 items-center gap-1 text-xs font-bold text-gold"><Star size={11} fill="currentColor" />{movie.vote_average.toFixed(1)}</span>
+                  </div>
+                </Link>
+              ))}
+            </div>
           </div>
+
+          {actors.length > 0 && (
+            <div className="min-w-0">
+              <div className="flex items-center justify-between gap-4">
+                <h2 className="text-lg font-black">Trending cast</h2>
+                <Link to={`/movie/${featuredMovie.id}`} className="text-xs font-bold text-gold hover:underline">Full cast</Link>
+              </div>
+              <div className="media-on-dark mt-5 grid overflow-hidden rounded-xl border border-gold/45 bg-black text-white sm:grid-cols-3 xl:grid-cols-[1.2fr_0.8fr] xl:grid-rows-2">
+                {actors.map((actor, index) => (
+                  <Link
+                    key={actor.id}
+                    to={`/explore?person=${actor.id}&personName=${encodeURIComponent(actor.name)}`}
+                    className={`group relative min-h-52 overflow-hidden border-gold/25 ${index === 0 ? 'sm:col-span-1 xl:row-span-2 xl:min-h-[360px] xl:border-r' : 'border-l sm:border-l xl:min-h-0 xl:border-b xl:border-l-0 last:border-b-0'}`}
+                  >
+                    <img src={getImageUrl(actor.profile_path, 'w500')} alt={actor.name} className="absolute inset-0 h-full w-full object-cover object-top transition-transform duration-500 group-hover:scale-[1.03]" />
+                    <div className="absolute inset-x-0 bottom-0 bg-black/82 p-3">
+                      <h3 className="truncate text-sm font-black">{actor.name}</h3>
+                      <p className="mt-1 truncate text-[9px] text-white/50">{actor.character}</p>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
-        {recentlyViewed.length > 0 && (
-          <MovieRow
-            title="Continue Browsing"
-            movies={recentlyViewed.slice(0, 12)}
-          />
-        )}
-        <MovieRow
-          title="In the Spotlight"
-          movies={trendingMovies}
-          isLoading={trendingLoading}
-          autoScroll
-        />
-        <MovieRow
-          title="Trending Series"
-          movies={trendingTVShows}
-          isLoading={trendingTVLoading}
-          autoScroll
-        />
-        <MovieRow
-          title="Now Playing"
-          movies={nowPlayingMovies}
-          isLoading={nowPlayingLoading}
-        />
-        <MovieRow
-          title="On the Air"
-          movies={onTheAirTVShows}
-          isLoading={onTheAirTVLoading}
-        />
-        <MovieRow
-          title="Upcoming"
-          movies={upcomingMovies}
-          isLoading={upcomingLoading}
-        />
-        <MovieRow
-          title="Popular"
-          movies={popularMovies}
-          isLoading={popularLoading}
-        />
-        <MovieRow
-          title="Popular TV Shows"
-          movies={popularTVShows}
-          isLoading={popularTVLoading}
-        />
-        <MovieRow
-          title="Top Rated"
-          movies={topRatedMovies}
-          isLoading={topRatedLoading}
-        />
-        <MovieRow
-          title="Top Rated Series"
-          movies={topRatedTVShows}
-          isLoading={topRatedTVLoading}
-        />
+      </section>
+
+      <div className="space-y-10 border-t border-white/10 pb-24 pt-10 sm:space-y-12">
+        {recentlyViewed.length > 0 && <MovieRow title="Continue browsing" movies={recentlyViewed.slice(0, 12)} />}
+        <MovieRow title="Trending now" movies={trendingMovies} isLoading={trending.isLoading} />
+        <MovieRow title="Series" movies={television.data?.results || []} isLoading={television.isLoading} />
+        <MovieRow title="Coming soon" movies={upcoming.data?.results || []} isLoading={upcoming.isLoading} />
+        <MovieRow title="Critics' choice" movies={topRated.data?.results || []} isLoading={topRated.isLoading} />
       </div>
     </div>
   );

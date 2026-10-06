@@ -10,6 +10,7 @@ import {
   Film,
 } from 'lucide-react';
 import type { EmbedSource } from '@/utils/embedSources';
+import { trackEvent } from '@/lib/siteTracking';
 
 interface VideoPlayerProps {
   src: string;
@@ -52,6 +53,8 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   const [activeSourceIndex, setActiveSourceIndex] = useState(0);
   const [sourceLoaded, setSourceLoaded] = useState(false);
   const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const mediaStartedRef = useRef(false);
+  const lastMediaPulseRef = useRef(0);
 
   const isHls = src?.includes('.m3u8');
   const embedSources =
@@ -65,7 +68,30 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
     setActiveSourceIndex(0);
     setSourceLoaded(false);
     setEmbedError(null);
+    mediaStartedRef.current = false;
+    lastMediaPulseRef.current = 0;
   }, [sourceKey]);
+
+  const trackMediaPulse = useCallback(
+    (eventName: 'media_progress' | 'media_end') => {
+      if (embed || !mediaStartedRef.current) return;
+      const now = Date.now();
+      const durationMs = Math.min(
+        Math.max(0, now - lastMediaPulseRef.current),
+        30_000,
+      );
+      if (durationMs > 0 || eventName === 'media_end') {
+        trackEvent(eventName, {
+          label: 'native',
+          durationMs,
+          mediaPositionMs: (videoRef.current?.currentTime || 0) * 1000,
+        });
+      }
+      lastMediaPulseRef.current = now;
+      if (eventName === 'media_end') mediaStartedRef.current = false;
+    },
+    [embed],
+  );
 
   const tryNextSource = useCallback(() => {
     if (activeSourceIndex < embedSources.length - 1) {
@@ -175,10 +201,35 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
     const video = videoRef.current;
     if (!video) return;
 
-    const onTimeUpdate = () => setCurrentTime(video.currentTime);
+    const onTimeUpdate = () => {
+      setCurrentTime(video.currentTime);
+      if (
+        !embed &&
+        mediaStartedRef.current &&
+        Date.now() - lastMediaPulseRef.current >= 10_000
+      ) {
+        trackMediaPulse('media_progress');
+      }
+    };
     const onDurationChange = () => setDuration(video.duration || 0);
-    const onPlay = () => setPlaying(true);
-    const onPause = () => setPlaying(false);
+    const onPlay = () => {
+      if (!embed) {
+        if (!mediaStartedRef.current) {
+          trackEvent('media_start', { label: 'native' });
+          mediaStartedRef.current = true;
+        }
+        lastMediaPulseRef.current = Date.now();
+      }
+      setPlaying(true);
+    };
+    const onPause = () => {
+      trackMediaPulse('media_progress');
+      setPlaying(false);
+    };
+    const onEnded = () => {
+      trackMediaPulse('media_end');
+      setPlaying(false);
+    };
     const onWaiting = () => setPlaying(false);
     const onProgress = () => {
       if (video.buffered.length > 0) {
@@ -193,6 +244,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
     video.addEventListener('durationchange', onDurationChange);
     video.addEventListener('play', onPlay);
     video.addEventListener('pause', onPause);
+    video.addEventListener('ended', onEnded);
     video.addEventListener('waiting', onWaiting);
     video.addEventListener('progress', onProgress);
     video.addEventListener('error', onError);
@@ -202,11 +254,14 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
       video.removeEventListener('durationchange', onDurationChange);
       video.removeEventListener('play', onPlay);
       video.removeEventListener('pause', onPause);
+      video.removeEventListener('ended', onEnded);
       video.removeEventListener('waiting', onWaiting);
       video.removeEventListener('progress', onProgress);
       video.removeEventListener('error', onError);
     };
-  }, []);
+  }, [embed, trackMediaPulse]);
+
+  useEffect(() => () => trackMediaPulse('media_end'), [trackMediaPulse]);
 
   useEffect(() => {
     const onFullscreenChange = () => {

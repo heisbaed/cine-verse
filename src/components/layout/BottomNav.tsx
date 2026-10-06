@@ -30,18 +30,16 @@ const BottomNav: React.FC = () => {
           <Compass size={20} aria-hidden="true" />
           <span>Explore</span>
         </Link>
-        <button
-          onClick={() =>
-            window.dispatchEvent(new Event('cineverse:open-search'))
-          }
+        <Link
+          to="/explore"
           className="group -mt-6 flex flex-col items-center gap-1 text-[10px] font-bold text-white focus:outline-none"
           aria-label="Search Cine-verse"
         >
-          <span className="grid h-12 w-12 place-items-center rounded-full bg-gradient-to-br from-gold to-ruby text-background shadow-[0_8px_30px_rgba(232,198,106,0.3)] transition-transform group-active:scale-95">
+          <span className="grid h-12 w-12 place-items-center rounded-full bg-gold text-background transition-transform group-active:scale-95">
             <Search size={21} strokeWidth={2.5} aria-hidden="true" />
           </span>
           <span>Search</span>
-        </button>
+        </Link>
         <Link
           to="/watchlist"
           className={linkClass(location.pathname === '/watchlist')}

@@ -1,312 +1,115 @@
 import React from 'react';
+import { Check, Download, Globe, Play, ShieldCheck, Smartphone } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import {
-  Bell,
-  Check,
-  Download,
-  Globe,
-  ShieldCheck,
-  Smartphone,
-  Sparkles,
-} from 'lucide-react';
-import AppShowcase, {
-  HomeScreen,
-  PhoneShell,
-} from '@/components/sections/AppShowcase';
 import { getImageUrl } from '@/api/tmdb';
-import { useSEO } from '@/hooks/useSEO';
 import { APP_RELEASE } from '@/config/appRelease';
+import { useSEO } from '@/hooks/useSEO';
+import { trackEvent } from '@/lib/siteTracking';
 
 const installSteps = [
-  {
-    title: 'Download',
-    body: 'Tap download. The file comes straight from this site — no other page opens.',
-  },
-  {
-    title: 'Install',
-    body: 'Open the file, allow “Install from this source” once, then tap Install.',
-  },
-  {
-    title: 'Watch',
-    body: 'Open Cine-verse. No ads, no popups. Sign in only to sync your watchlist.',
-  },
+  ['Download', 'Download the APK directly from Cine-verse.'],
+  ['Allow', 'If Android asks, allow installation from your browser.'],
+  ['Install', 'Open the APK, tap Install, then launch the app.'],
 ];
-
-const appPoints = [
-  'Home-screen app, built for daily use',
-  'Movies, series, and upcoming releases',
-  'Instant search with filters',
-  'Watchlist synced with web',
-];
-
-const webPoints = [
-  'Runs in any browser, nothing to install',
-  'Add to Home Screen to use like an app',
-  'Offline-ready posters and details',
-  'Always up to date automatically',
-];
-
-const heroBackdrop =
-  '/qeQJx07rK2xm8SD2sJxFKhE7gs0.jpg';
-
-const CheckRow: React.FC<{ items: string[] }> = ({ items }) => (
-  <ul className="mt-7 space-y-3.5">
-    {items.map((item) => (
-      <li key={item} className="flex items-start gap-3">
-        <span className="mt-[2px] grid h-5 w-5 shrink-0 place-items-center rounded-full bg-emerald/15 text-emerald">
-          <Check size={13} strokeWidth={3} aria-hidden="true" />
-        </span>
-        <span className="text-[15px] leading-6 text-white/70">{item}</span>
-      </li>
-    ))}
-  </ul>
-);
 
 const DownloadPage: React.FC = () => {
   useSEO({
-    title: 'Android App and Web Version',
-    description:
-      'About the Cine-verse Android app and web version. Download the APK directly from this site. No ads, no popups.',
+    title: 'Download Cine-verse for Android',
+    description: 'Download the current Cine-verse Android APK directly or continue with the web app.',
   });
 
+  const trackDownload = () => trackEvent('apk_download', { label: APP_RELEASE.version });
+
   return (
-    <div className="pb-36 pt-10 md:pb-24">
-      <section
-        className="media-on-dark relative overflow-hidden text-white"
-        aria-label="Download Cine-verse"
-      >
-        <img
-          src={getImageUrl(heroBackdrop, 'original')}
-          alt=""
-          aria-hidden="true"
-          className="absolute inset-0 h-full w-full object-cover object-center"
-        />
-        <div className="absolute inset-0 bg-background/40" />
-        <div className="absolute inset-0 bg-gradient-to-r from-background via-background/80 to-background/30" />
-        <div className="absolute inset-0 bg-gradient-to-t from-background via-background/15 to-background/40" />
-        <div className="hero-vignette absolute inset-0" />
-        <div className="cinematic-particles absolute inset-0 opacity-40" />
-        <div className="cinematic-orb cinematic-orb-gold absolute -left-24 top-1/4 h-72 w-72 rounded-full" />
-        <div className="cinematic-orb cinematic-orb-ruby absolute -bottom-16 -right-24 h-80 w-80 rounded-full" />
-
-        <div className="relative mx-auto grid max-w-7xl items-center gap-16 px-6 py-24 lg:grid-cols-[1.1fr_0.9fr] lg:py-28">
-          <div>
-            <div className="mb-5 flex items-center gap-3">
-              <span className="h-px w-10 bg-gold" />
-              <span className="text-[10px] font-black uppercase tracking-[0.35em] text-gold sm:text-xs">
-                The Android app · Get it free
-              </span>
-            </div>
-
-            <h1 className="cinema-title text-5xl font-black leading-[0.95] tracking-[-0.045em] sm:text-6xl lg:text-7xl">
-              Movies everywhere.
-              <br />
-              <span className="text-white/45">App or web.</span>
-            </h1>
-
-            <p className="mt-6 max-w-xl text-lg leading-relaxed text-white/60">
-              The Android app for your phone. The web version right here. Free
-              forever — no ads, no popups.
+    <div className="pb-28">
+      <section className="border-b border-white/10 bg-surface">
+        <div className="mx-auto grid max-w-[1280px] items-center gap-12 px-5 py-16 sm:px-8 sm:py-20 lg:grid-cols-[1fr_380px] lg:px-12 lg:py-24">
+          <div className="max-w-2xl">
+            <p className="text-xs font-black uppercase tracking-[0.28em] text-gold">Android release</p>
+            <h1 className="cinema-title mt-4 text-5xl font-black uppercase leading-[0.9] tracking-[-0.03em] sm:text-7xl">Take Cine-verse with you.</h1>
+            <p className="mt-6 max-w-xl text-base leading-7 text-white/60 sm:text-lg">
+              Install the current Android release, or keep watching in your browser. Your watchlist stays with your account.
             </p>
-
             <div className="mt-8 flex flex-wrap gap-3">
               <a
                 href={APP_RELEASE.apkUrl}
                 download={APP_RELEASE.apkFileName}
-                className="inline-flex items-center gap-3 rounded-full bg-gold px-7 py-4 text-sm font-black uppercase tracking-[0.1em] text-background shadow-[0_15px_50px_rgba(232,198,106,0.25)] transition-transform hover:-translate-y-1 focus:outline-none focus:ring-2 focus:ring-gold/60"
+                onClick={trackDownload}
+                className="inline-flex min-h-12 items-center gap-2 bg-gold px-6 text-xs font-black uppercase tracking-[0.14em] text-background transition-colors hover:bg-white focus:outline-none focus:ring-2 focus:ring-gold"
               >
-                <Download size={18} aria-hidden="true" />
-                Download for Android
+                <Download size={17} aria-hidden="true" /> Download APK
               </a>
-              <Link
-                to="/explore"
-                className="inline-flex items-center gap-3 rounded-full border border-white/20 bg-white/8 px-7 py-4 text-sm font-black uppercase tracking-[0.1em] text-white backdrop-blur-xl transition-all hover:border-gold/45 hover:bg-white/15 focus:outline-none focus:ring-2 focus:ring-gold/60"
-              >
-                <Globe size={18} aria-hidden="true" />
-                Continue on web
+              <Link to="/explore" className="inline-flex min-h-12 items-center gap-2 border border-white/20 px-6 text-xs font-black uppercase tracking-[0.14em] transition-colors hover:border-gold hover:text-gold focus:outline-none focus:ring-2 focus:ring-gold">
+                <Globe size={17} aria-hidden="true" /> Use web app
               </Link>
             </div>
-
-            <p className="mt-6 text-[13px] text-white/40">
-              v{APP_RELEASE.version} · {APP_RELEASE.fileSize} ·{' '}
-              {APP_RELEASE.minAndroid} · Updated {APP_RELEASE.updatedAt}
-            </p>
+            <dl className="mt-8 grid max-w-lg grid-cols-2 gap-x-8 gap-y-4 border-t border-white/10 pt-6 text-sm sm:grid-cols-4">
+              <div><dt className="text-white/40">Version</dt><dd className="mt-1 font-bold">{APP_RELEASE.version}</dd></div>
+              <div><dt className="text-white/40">Size</dt><dd className="mt-1 font-bold">{APP_RELEASE.fileSize}</dd></div>
+              <div><dt className="text-white/40">Requires</dt><dd className="mt-1 font-bold">{APP_RELEASE.minAndroid}</dd></div>
+              <div><dt className="text-white/40">Updated</dt><dd className="mt-1 font-bold">{APP_RELEASE.updatedAt}</dd></div>
+            </dl>
           </div>
-
-          <div className="relative mx-auto w-full max-w-[300px] lg:max-w-none">
-            <div className="absolute left-1/2 top-1/2 -z-0 h-[420px] w-[420px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-gold/20 blur-[120px]" />
-            <motion.div
-              animate={{ y: [0, -12, 0] }}
-              transition={{
-                repeat: Infinity,
-                duration: 6,
-                ease: 'easeInOut',
-              }}
-              className="relative z-10"
-            >
-              <PhoneShell>
-                <HomeScreen />
-              </PhoneShell>
-            </motion.div>
-            <div className="absolute -right-2 top-16 hidden items-center gap-2 rounded-full border border-gold/30 bg-black/50 px-3.5 py-2 text-[11px] font-bold text-gold shadow-lg backdrop-blur-xl sm:flex">
-              <Sparkles size={13} aria-hidden="true" />
-              Cine AI inside
-            </div>
-            <div className="absolute -left-2 bottom-24 hidden items-center gap-2 rounded-full border border-white/15 bg-black/50 px-3.5 py-2 text-[11px] font-bold text-white/80 shadow-lg backdrop-blur-xl sm:flex">
-              <Globe size={13} aria-hidden="true" />
-              Syncs with web
+          <div className="mx-auto w-full max-w-[270px]" aria-label="Cine-verse Android app preview">
+            <div className="media-on-dark rounded-[2.25rem] border border-white/20 bg-black p-2 text-white shadow-2xl">
+              <div className="relative aspect-[9/19] overflow-hidden rounded-[1.8rem] bg-[#101010] p-3 pt-8 text-white">
+                <span className="absolute left-1/2 top-2 h-4 w-16 -translate-x-1/2 rounded-full bg-black" />
+                <div className="flex items-center justify-between text-[9px] font-bold"><span>CINE-VERSE</span><span className="text-gold">ANDROID</span></div>
+                <div className="relative mt-3 overflow-hidden">
+                  <img src={getImageUrl('/qeQJx07rK2xm8SD2sJxFKhE7gs0.jpg', 'w780')} alt="Featured film in the Cine-verse Android app" className="h-48 w-full object-cover" />
+                  <div className="absolute inset-x-0 bottom-0 bg-black/80 p-3">
+                    <p className="text-[8px] font-bold uppercase tracking-widest text-gold">Now featured</p>
+                    <p className="mt-1 text-sm font-black">Spider-Man: Brand New Day</p>
+                    <span className="mt-2 inline-flex items-center gap-1 bg-gold px-2 py-1 text-[8px] font-black text-black"><Play size={8} fill="currentColor" /> Details</span>
+                  </div>
+                </div>
+                <p className="mt-4 text-[10px] font-black uppercase tracking-wider">Trending movies</p>
+                <div className="mt-2 grid grid-cols-3 gap-2">
+                  {['/bjiS5ipwxb9JFy3XRRN4OAilSeX.jpg', '/5rhTDKUhPYvpdQIijFIs5VoWsON.jpg', '/i7UyjfPio0VFHB9rBUZSFyhOoM8.jpg'].map((poster) => (
+                    <img key={poster} src={getImageUrl(poster, 'w185')} alt="" className="aspect-[2/3] w-full object-cover" />
+                  ))}
+                </div>
+                <div className="absolute inset-x-0 bottom-0 flex justify-around border-t border-white/15 bg-[#151515] py-3 text-[8px] font-bold text-white/55"><span className="text-gold">Home</span><span>Explore</span><span>Saved</span><span>Profile</span></div>
+              </div>
             </div>
           </div>
         </div>
       </section>
 
-      <AppShowcase />
+      <section className="mx-auto max-w-[1100px] px-5 py-16 sm:px-8 sm:py-20">
+        <div className="grid gap-12 lg:grid-cols-2">
+          <div>
+            <p className="text-xs font-black uppercase tracking-[0.24em] text-gold">Installation</p>
+            <h2 className="mt-3 text-3xl font-black tracking-tight sm:text-4xl">Three steps on Android</h2>
+            <ol className="mt-8 border-t border-white/10">
+              {installSteps.map(([title, body], index) => (
+                <li key={title} className="grid grid-cols-[2.5rem_1fr] gap-4 border-b border-white/10 py-5">
+                  <span className="font-black text-gold">0{index + 1}</span>
+                  <div><h3 className="font-bold">{title}</h3><p className="mt-1 text-sm leading-6 text-white/50">{body}</p></div>
+                </li>
+              ))}
+            </ol>
+          </div>
 
-      <section className="mx-auto mt-24 max-w-6xl px-5 sm:px-8">
-        <div className="mx-auto max-w-2xl text-center">
-          <p className="text-xs font-black uppercase tracking-[0.3em] text-gold">
-            Two ways in
-          </p>
-          <h2 className="cinema-title mt-3 text-4xl font-black leading-tight sm:text-5xl">
-            Same cinema. Your room.
-          </h2>
-          <p className="mt-4 text-base leading-relaxed text-white/55 sm:text-lg">
-            Pick the surface that fits your day — your handset or your browser.
-          </p>
-        </div>
-
-        <div className="mt-12 grid gap-5 md:grid-cols-2">
-          <section className="rounded-3xl border border-white/10 bg-surface/80 p-8 shadow-2xl backdrop-blur-xl sm:p-10">
-            <div className="flex items-center gap-4">
-              <span className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-gold text-background">
-                <Smartphone size={26} aria-hidden="true" />
-              </span>
-              <div>
-                <h3 className="text-2xl font-black tracking-tight">
-                  Android app
-                </h3>
-                <p className="mt-1 text-[15px] text-white/50">
-                  Install once. Open from your home screen.
-                </p>
-              </div>
+          <div className="border border-white/10 bg-surface p-6 sm:p-8">
+            <div className="flex items-center gap-3">
+              <Smartphone className="text-gold" size={22} aria-hidden="true" />
+              <h2 className="text-xl font-black">Release {APP_RELEASE.version}</h2>
             </div>
-            <CheckRow items={appPoints} />
-            <a
-              href={APP_RELEASE.apkUrl}
-              download={APP_RELEASE.apkFileName}
-              className="mt-8 inline-flex min-h-[48px] w-full items-center justify-center gap-2 rounded-full bg-gold px-6 text-sm font-black uppercase tracking-[0.08em] text-background transition-transform hover:-translate-y-0.5"
-            >
-              <Download size={16} aria-hidden="true" />
-              Get the APK
+            <ul className="mt-6 space-y-3">
+              {APP_RELEASE.changelog.map((item) => (
+                <li key={item} className="flex items-start gap-3 text-sm leading-6 text-white/60">
+                  <Check size={15} className="mt-1 shrink-0 text-gold" strokeWidth={3} aria-hidden="true" /> {item}
+                </li>
+              ))}
+            </ul>
+            <div className="mt-7 border-t border-white/10 pt-6">
+              <h3 className="flex items-center gap-2 font-bold"><ShieldCheck size={18} className="text-emerald" aria-hidden="true" /> Direct release file</h3>
+              <p className="mt-2 text-sm leading-6 text-white/50">The APK is served from the official Cine-verse GitHub release. Android may request permission because the app is installed outside Google Play.</p>
+            </div>
+            <a href={APP_RELEASE.apkUrl} download={APP_RELEASE.apkFileName} onClick={trackDownload} className="mt-7 inline-flex min-h-12 w-full items-center justify-center gap-2 bg-gold px-6 text-xs font-black uppercase tracking-[0.14em] text-background hover:bg-white">
+              <Download size={17} aria-hidden="true" /> Download {APP_RELEASE.apkFileName}
             </a>
-          </section>
-
-          <section className="rounded-3xl border border-white/10 bg-surface/80 p-8 shadow-2xl backdrop-blur-xl sm:p-10">
-            <div className="flex items-center gap-4">
-              <span className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl border border-white/15 bg-white/10 text-white">
-                <Globe size={26} aria-hidden="true" />
-              </span>
-              <div>
-                <h3 className="text-2xl font-black tracking-tight">Web app</h3>
-                <p className="mt-1 text-[15px] text-white/50">
-                  Nothing to install. You are already here.
-                </p>
-              </div>
-            </div>
-            <CheckRow items={webPoints} />
-            <Link
-              to="/explore"
-              className="mt-8 inline-flex min-h-[48px] w-full items-center justify-center gap-2 rounded-full border border-white/15 bg-white/5 px-6 text-sm font-black uppercase tracking-[0.08em] text-white transition-all hover:border-gold/40 hover:text-gold"
-            >
-              <Globe size={16} aria-hidden="true" />
-              Open the web app
-            </Link>
-          </section>
-        </div>
-      </section>
-
-      <section className="mx-auto mt-24 max-w-6xl px-5 sm:px-8">
-        <div className="mx-auto max-w-2xl text-center">
-          <p className="text-xs font-black uppercase tracking-[0.3em] text-gold">
-            Straightforward
-          </p>
-          <h2 className="cinema-title mt-3 text-4xl font-black leading-tight sm:text-5xl">
-            Install in three taps
-          </h2>
-        </div>
-        <div className="mt-12 grid gap-5 sm:grid-cols-3">
-          {installSteps.map((step, index) => (
-            <div
-              key={step.title}
-              className="relative rounded-3xl border border-white/10 bg-surface/60 p-7 shadow-xl backdrop-blur-xl"
-            >
-              <div className="flex items-center gap-3">
-                <span className="grid h-10 w-10 place-items-center rounded-full bg-gold text-sm font-black text-background">
-                  {index + 1}
-                </span>
-                <p className="text-xs font-black uppercase tracking-[0.18em] text-white/40">
-                  Step {index + 1}
-                </p>
-              </div>
-              <h3 className="mt-4 text-xl font-black">{step.title}</h3>
-              <p className="mt-2 text-sm leading-6 text-white/55">
-                {step.body}
-              </p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      <section className="mx-auto mt-24 max-w-6xl px-5 sm:px-8">
-        <div className="rounded-3xl border border-white/10 bg-surface/60 p-8 shadow-xl backdrop-blur-xl sm:p-10">
-          <div className="flex flex-col gap-10 sm:flex-row sm:justify-between">
-            <div className="min-w-0 flex-1">
-              <h2 className="flex flex-wrap items-center gap-3 text-2xl font-black">
-                <span className="grid h-11 w-11 place-items-center rounded-xl bg-gold text-background">
-                  <Bell size={19} aria-hidden="true" />
-                </span>
-                What&apos;s new in v{APP_RELEASE.version}
-              </h2>
-              <ul className="mt-6 grid gap-x-8 gap-y-3 sm:grid-cols-2">
-                {APP_RELEASE.changelog.map((item) => (
-                  <li key={item} className="flex items-start gap-3">
-                    <Check
-                      size={15}
-                      strokeWidth={3}
-                      className="mt-1 shrink-0 text-emerald"
-                      aria-hidden="true"
-                    />
-                    <span className="text-sm leading-6 text-white/60">
-                      {item}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-            <div className="shrink-0 sm:w-72 sm:border-l sm:border-white/10 sm:pl-8">
-              <h3 className="flex items-center gap-2 text-sm font-black">
-                <ShieldCheck
-                  size={17}
-                  className="text-emerald"
-                  aria-hidden="true"
-                />
-                Safe to install
-              </h3>
-              <p className="mt-3 text-[13px] leading-6 text-white/50">
-                Served from this same website and signed by the Cine-verse
-                owner. Android only warns because it is not from Google Play.
-              </p>
-              <div className="mt-6 rounded-2xl border border-gold/20 bg-gold/8 p-4">
-                <p className="flex items-center gap-2 text-sm font-black text-gold">
-                  <Sparkles size={15} aria-hidden="true" />
-                  Free forever
-                </p>
-                <p className="mt-1.5 text-[13px] leading-5 text-white/45">
-                  No ads. No popups. No account required to watch.
-                </p>
-              </div>
-            </div>
           </div>
         </div>
       </section>

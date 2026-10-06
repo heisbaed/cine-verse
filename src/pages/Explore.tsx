@@ -22,6 +22,7 @@ import ErrorState from '@/components/ui/ErrorState';
 import { useSEO } from '@/hooks/useSEO';
 import type { MediaItem, MediaResponse } from '@/types/tmdb';
 import { getMediaDate, getMediaTitle } from '@/utils/media';
+import { trackEvent } from '@/lib/siteTracking';
 
 const currentYear = new Date().getFullYear();
 const years = Array.from({ length: 50 }, (_, index) => currentYear - index);
@@ -120,6 +121,12 @@ const Explore: React.FC = () => {
     setSelectedGenre(urlGenre);
     setSortBy('popularity.desc');
   }, [urlQuery, urlGenre, contentType, personId]);
+
+  useEffect(() => {
+    if (debouncedQuery.trim().length >= 2) {
+      trackEvent('search', { path: '/explore', label: contentType });
+    }
+  }, [contentType, debouncedQuery]);
 
   const changeContentType = (type: 'movie' | 'tv') => {
     const nextParams = new URLSearchParams(searchParams);
