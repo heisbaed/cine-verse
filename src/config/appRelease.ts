@@ -16,27 +16,23 @@ export interface AppRelease {
 // new browser_download_url here (and update version/fileSize).
 
 export const APP_RELEASE: AppRelease = {
-  version: '1.2.2',
-  buildNumber: '7',
+  version: '1.2.3',
+  buildNumber: '8',
   fileSize: '~45 MB',
   minAndroid: 'Android 8.0+',
   updatedAt: 'October 2026',
   apkUrl:
-    'https://github.com/heisbaed/cine-verse/releases/download/v1.2.2/cine-verse-v1.2.2.apk',
-  apkFileName: 'cine-verse-v1.2.2.apk',
+    'https://github.com/heisbaed/cine-verse/releases/download/v1.2.3/cine-verse-v1.2.3.apk',
+  apkFileName: 'cine-verse-v1.2.3.apk',
   changelog: [
-    'Cine AI now grounds recommendations in live TMDB results',
-    'Recommendation cards now match the exact titles and posters in the answer',
-    'Cine AI understands released and upcoming titles, with dates and explanations',
-    'Previous recommendations are excluded from later requests',
-    'Android APK installation now retries after enabling Install unknown apps',
+    'Update loops fixed — downloads and patches now recover and apply reliably',
+    'Cine AI answers grounded in live results, including franchises and stories',
+    'Torrent downloads search two indexes with quality filters, sorting, and pages',
+    'Minimalist torrent UI with tap-to-select dropdowns and magnet-first actions',
     'Working picture-in-picture — shrink any video into a floating window',
     'Follow shows and get notified when new episodes air',
     'App lock — fingerprint or PIN on every launch (optional)',
     'Cinema stats — time watched, top genres, most-watched title',
-    'Home now opens with picks based on what you watched',
-    'Vidlink moved last after hanging; slow networks get 30s per server',
-    'Cine AI input floats above the keyboard like WhatsApp',
   ],
 };
 
