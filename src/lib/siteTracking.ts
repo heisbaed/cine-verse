@@ -1,0 +1,252 @@
+import { firebaseApp } from '@/lib/firebase';
+
+export type TrackingSite = 'main' | 'launch';
+
+export type TrackingEventName =
+  | 'page_view'
+  | 'apk_download'
+  | 'cta_click'
+  | 'search'
+  | 'media_view'
+  | 'session_start'
+  | 'session_heartbeat'
+  | 'session_end'
+  | 'media_start'
+  | 'media_progress'
+  | 'media_end';
+
+export interface TrackingEvent {
+  id: string;
+  name: TrackingEventName;
+  site: TrackingSite;
+  path: string;
+  label?: string;
+  timestamp: number;
+  sessionId: string;
+  device: 'mobile' | 'desktop' | 'tablet';
+  referrer?: string;
+  durationMs?: number;
+  mediaPositionMs?: number;
+}
+
+const EVENTS_KEY = 'cineverse-signal-events-v1';
+const SESSION_KEY = 'cineverse-signal-session-v2';
+const SESSION_STARTED_KEY = 'cineverse-signal-session-started-v2';
+const MAX_EVENTS = 2500;
+const TRACKING_SITES: TrackingSite[] = ['main', 'launch'];
+
+const getSite = (): TrackingSite =>
+  typeof window !== 'undefined' &&
+  (window.location.hostname.includes('cine-verse-231ad') ||
+    window.location.hostname.includes('launch'))
+    ? 'launch'
+    : 'main';
+
+const getDevice = (): TrackingEvent['device'] => {
+  if (typeof window === 'undefined') return 'desktop';
+  const width = window.innerWidth;
+  if (width < 640) return 'mobile';
+  if (width < 1024) return 'tablet';
+  return 'desktop';
+};
+
+const getSessionId = (): string => {
+  if (typeof window === 'undefined') return 'server';
+  const existing = window.sessionStorage.getItem(SESSION_KEY);
+  if (existing) return existing;
+  const value = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+  window.sessionStorage.setItem(SESSION_KEY, value);
+  return value;
+};
+
+export const readTrackingEvents = (): TrackingEvent[] => {
+  if (typeof window === 'undefined') return [];
+  try {
+    const parsed = JSON.parse(
+      window.localStorage.getItem(EVENTS_KEY) || '[]',
+    ) as unknown;
+    return Array.isArray(parsed)
+      ? parsed.filter((event): event is TrackingEvent => {
+          if (!event || typeof event !== 'object') return false;
+          const value = event as Partial<TrackingEvent>;
+          return (
+            typeof value.id === 'string' &&
+            typeof value.name === 'string' &&
+            typeof value.site === 'string' &&
+            typeof value.path === 'string' &&
+            typeof value.timestamp === 'number' &&
+            typeof value.sessionId === 'string'
+          );
+        })
+      : [];
+  } catch {
+    return [];
+  }
+};
+
+export const trackEvent = (
+  name: TrackingEventName,
+  details: {
+    path?: string;
+    label?: string;
+    durationMs?: number;
+    mediaPositionMs?: number;
+  } = {},
+): void => {
+  if (typeof window === 'undefined') return;
+  const event: TrackingEvent = {
+    id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    name,
+    site: getSite(),
+    path: details.path || `${window.location.pathname}${window.location.search}`,
+    label: details.label?.slice(0, 80),
+    timestamp: Date.now(),
+    sessionId: getSessionId(),
+    device: getDevice(),
+    referrer: document.referrer ? new URL(document.referrer).hostname : undefined,
+    ...(typeof details.durationMs === 'number' && Number.isFinite(details.durationMs)
+      ? { durationMs: Math.max(0, Math.round(details.durationMs)) }
+      : {}),
+    ...(typeof details.mediaPositionMs === 'number' && Number.isFinite(details.mediaPositionMs)
+      ? { mediaPositionMs: Math.max(0, Math.round(details.mediaPositionMs)) }
+      : {}),
+  };
+
+  const events = [...readTrackingEvents(), event].slice(-MAX_EVENTS);
+  try {
+    window.localStorage.setItem(EVENTS_KEY, JSON.stringify(events));
+    window.dispatchEvent(new Event('cineverse:tracking-updated'));
+    void publishRemoteEvent(event);
+  } catch {
+    // Analytics must never interrupt the cinema experience when storage is full.
+  }
+};
+
+let stopSessionTracking: (() => void) | null = null;
+
+/**
+ * Records only visible, active app time. Heartbeats are deliberately short and
+ * bounded so a sleeping tab never turns into an inflated session.
+ */
+export const startSessionTracking = (): (() => void) => {
+  if (typeof window === 'undefined') return () => undefined;
+  if (stopSessionTracking) return stopSessionTracking;
+
+  const sessionStarted = window.sessionStorage.getItem(SESSION_STARTED_KEY) !== '1';
+  if (sessionStarted) {
+    window.sessionStorage.setItem(SESSION_STARTED_KEY, '1');
+    trackEvent('session_start', { label: 'app' });
+  }
+
+  let lastPulseAt = Date.now();
+  const flush = (eventName: 'session_heartbeat' | 'session_end') => {
+    const now = Date.now();
+    const durationMs = Math.min(Math.max(0, now - lastPulseAt), 30_000);
+    if (durationMs > 0 && document.visibilityState === 'visible') {
+      trackEvent(eventName, { label: 'app', durationMs });
+    }
+    lastPulseAt = now;
+  };
+  const interval = window.setInterval(() => {
+    if (document.visibilityState === 'visible') flush('session_heartbeat');
+  }, 15_000);
+  const onVisibilityChange = () => {
+    if (document.visibilityState === 'visible') {
+      lastPulseAt = Date.now();
+    } else {
+      flush('session_heartbeat');
+    }
+  };
+  const onPageHide = () => flush('session_end');
+  document.addEventListener('visibilitychange', onVisibilityChange);
+  window.addEventListener('pagehide', onPageHide);
+
+  const cleanup = () => {
+    window.clearInterval(interval);
+    document.removeEventListener('visibilitychange', onVisibilityChange);
+    window.removeEventListener('pagehide', onPageHide);
+    if (stopSessionTracking === cleanup) stopSessionTracking = null;
+  };
+  stopSessionTracking = cleanup;
+  return cleanup;
+};
+
+const publishRemoteEvent = async (event: TrackingEvent): Promise<void> => {
+  try {
+    const { getDatabase, push, ref, set } = await import('firebase/database');
+    const database = getDatabase(firebaseApp);
+    const eventRef = push(ref(database, `analytics/${event.site}/events`));
+    await set(eventRef, event);
+  } catch {
+    // Local telemetry remains available if Firebase is offline or rules reject
+    // an event from an older cached bundle.
+  }
+};
+
+export const readRemoteTrackingEvents = async (
+  days = 30,
+): Promise<TrackingEvent[]> => {
+  const {
+    endAt,
+    get,
+    getDatabase,
+    limitToLast,
+    orderByChild,
+    query,
+    ref,
+    startAt,
+  } = await import('firebase/database');
+  const database = getDatabase(firebaseApp);
+  const now = Date.now();
+  const since = now - days * 24 * 60 * 60 * 1000;
+  const snapshots = await Promise.all(
+    TRACKING_SITES.map((site) =>
+      get(
+        query(
+          ref(database, `analytics/${site}/events`),
+          orderByChild('timestamp'),
+          startAt(since),
+          endAt(now),
+          limitToLast(MAX_EVENTS),
+        ),
+      ),
+    ),
+  );
+  const remoteEvents: TrackingEvent[] = [];
+  snapshots.forEach((snapshot) => {
+    snapshot.forEach((child) => {
+      const value = child.val() as Partial<TrackingEvent>;
+      if (
+        typeof value.id === 'string' &&
+        typeof value.name === 'string' &&
+        typeof value.site === 'string' &&
+        typeof value.path === 'string' &&
+        typeof value.timestamp === 'number' &&
+        typeof value.sessionId === 'string' &&
+        typeof value.device === 'string'
+      ) {
+        remoteEvents.push(value as TrackingEvent);
+      }
+    });
+  });
+  return remoteEvents.sort((left, right) => left.timestamp - right.timestamp);
+};
+
+export const trackPageView = (path: string): void => {
+  const recentEvents = readTrackingEvents();
+  const recent = recentEvents[recentEvents.length - 1];
+  if (
+    recent?.name === 'page_view' &&
+    recent.path === path &&
+    Date.now() - recent.timestamp < 1200
+  ) {
+    return;
+  }
+  trackEvent('page_view', { path });
+};
+
+export const clearTrackingEvents = (): void => {
+  if (typeof window === 'undefined') return;
+  window.localStorage.removeItem(EVENTS_KEY);
+  window.dispatchEvent(new Event('cineverse:tracking-updated'));
+};

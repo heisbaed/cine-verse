@@ -734,6 +734,68 @@
     </div>
 
     <script>
+      // Lightweight, privacy-first launch telemetry. The main app uses the
+      // same local event shape so the Signal Room can inspect either surface.
+      (() => {
+        const eventsKey = 'cineverse-signal-events-v1';
+        const sessionKey = 'cineverse-signal-session-v2';
+        const startedKey = 'cineverse-signal-session-started-v2';
+        const sessionId = sessionStorage.getItem(sessionKey) || `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+        sessionStorage.setItem(sessionKey, sessionId);
+        const track = (name, label = '', durationMs = 0) => {
+          let events = [];
+          try {
+            const saved = JSON.parse(localStorage.getItem(eventsKey) || '[]');
+            events = Array.isArray(saved) ? saved : [];
+          } catch {
+            events = [];
+          }
+          const width = window.innerWidth;
+          const event = {
+            id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+            name,
+            site: 'launch',
+            path: window.location.pathname,
+            label: String(label).slice(0, 80),
+            timestamp: Date.now(),
+            sessionId,
+            device: width < 640 ? 'mobile' : width < 1024 ? 'tablet' : 'desktop',
+          };
+          if (durationMs > 0) event.durationMs = Math.min(Math.round(durationMs), 30000);
+          events.push(event);
+          try {
+            localStorage.setItem(eventsKey, JSON.stringify(events.slice(-2500)));
+          } catch {
+            // Never block the launch page for telemetry.
+          }
+        };
+        track('page_view');
+        let lastPulseAt = Date.now();
+        const flush = (name) => {
+          const now = Date.now();
+          const durationMs = Math.min(Math.max(0, now - lastPulseAt), 30000);
+          if (durationMs > 0 && document.visibilityState === 'visible') track(name, 'app', durationMs);
+          lastPulseAt = now;
+        };
+        if (sessionStorage.getItem(startedKey) !== '1') {
+          sessionStorage.setItem(startedKey, '1');
+          track('session_start', 'app');
+        }
+        window.setInterval(() => {
+          if (document.visibilityState === 'visible') flush('session_heartbeat');
+        }, 15000);
+        document.addEventListener('visibilitychange', () => {
+          if (document.visibilityState === 'visible') lastPulseAt = Date.now();
+          else flush('session_heartbeat');
+        });
+        window.addEventListener('pagehide', () => flush('session_end'));
+        document.addEventListener('click', (event) => {
+          const target = event.target.closest('button, a');
+          if (target) track('cta_click', target.id || target.textContent.trim());
+        });
+      })();
+
+      (() => {
       (() => {
         const releaseAt = new Date('2026-07-17T06:00:00+03:00').getTime();
         const posterBase = 'https://image.tmdb.org/t/p/w342';

@@ -1,10 +1,10 @@
-import React, { lazy, Suspense, useState } from 'react';
+import React, { lazy, Suspense, useEffect } from 'react';
 import { Route, Routes, useLocation } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import BottomNav from './components/layout/BottomNav';
 import Footer from './components/layout/Footer';
 import Navbar from './components/layout/Navbar';
-import SplashScreen from './components/ui/SplashScreen';
+import { startSessionTracking, trackPageView } from './lib/siteTracking';
 
 const Home = lazy(() => import('./pages/Home'));
 const Explore = lazy(() => import('./pages/Explore'));
@@ -15,6 +15,7 @@ const MovieDetail = lazy(() => import('./pages/MovieDetail'));
 const TVDetail = lazy(() => import('./pages/TVDetail'));
 const Download = lazy(() => import('./pages/Download'));
 const NotFound = lazy(() => import('./pages/NotFound'));
+const Dashboard = lazy(() => import('./pages/Dashboard'));
 
 const RouteLoader: React.FC = () => (
   <div className="flex min-h-[55vh] items-center justify-center px-6">
@@ -29,20 +30,19 @@ const RouteLoader: React.FC = () => (
 
 const App: React.FC = () => {
   const location = useLocation();
-  const [showSplash, setShowSplash] = useState(true);
+  const isDashboard = location.pathname === '/dashboard';
+
+  useEffect(() => {
+    trackPageView(`${location.pathname}${location.search}`);
+  }, [location.pathname, location.search]);
+
+  useEffect(() => startSessionTracking(), []);
 
   return (
     <>
-      <AnimatePresence>
-        {showSplash && (
-          <SplashScreen onComplete={() => setShowSplash(false)} />
-        )}
-      </AnimatePresence>
-      <div className="flex min-h-screen flex-col bg-background text-white">
-        <div className="ambient-light pointer-events-none fixed inset-0 z-0" />
-        <div className="grain pointer-events-none fixed inset-0 z-0" />
-        <div className="relative z-10 flex min-h-screen flex-col">
-          <Navbar />
+      <div className="app-frame flex min-h-screen flex-col bg-background text-white">
+        <div className="relative z-10 flex min-h-screen flex-col lg:ml-[72px]">
+          {!isDashboard && <Navbar />}
           <AnimatePresence mode="wait" initial={false}>
             <motion.main
               key={location.pathname}
@@ -62,13 +62,14 @@ const App: React.FC = () => {
                   <Route path="/movie/:id" element={<MovieDetail />} />
                   <Route path="/tv/:id" element={<TVDetail />} />
                   <Route path="/download" element={<Download />} />
+                  <Route path="/dashboard" element={<Dashboard />} />
                   <Route path="*" element={<NotFound />} />
                 </Routes>
               </Suspense>
             </motion.main>
           </AnimatePresence>
-          <Footer />
-          <BottomNav />
+          {!isDashboard && <Footer />}
+          {!isDashboard && <BottomNav />}
         </div>
       </div>
     </>

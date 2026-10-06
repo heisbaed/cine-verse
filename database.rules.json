@@ -7,6 +7,18 @@
         ".read": "auth != null && auth.uid === $uid",
         ".write": "auth != null && auth.uid === $uid"
       }
+    },
+    "analytics": {
+      "$site": {
+        "events": {
+          ".read": "auth != null && auth.token.email == 'charlesbabuu0@gmail.com'",
+          ".indexOn": ["timestamp"],
+          "$eventId": {
+            ".write": "!data.exists() && ($site === 'main' || $site === 'launch')",
+            ".validate": "newData.hasChildren(['id', 'name', 'site', 'path', 'timestamp', 'sessionId', 'device']) && newData.child('id').isString() && newData.child('id').val().length <= 100 && newData.child('name').isString() && (newData.child('name').val() === 'page_view' || newData.child('name').val() === 'apk_download' || newData.child('name').val() === 'cta_click' || newData.child('name').val() === 'search' || newData.child('name').val() === 'media_view' || newData.child('name').val() === 'session_start' || newData.child('name').val() === 'session_heartbeat' || newData.child('name').val() === 'session_end' || newData.child('name').val() === 'media_start' || newData.child('name').val() === 'media_progress' || newData.child('name').val() === 'media_end') && newData.child('site').val() === $site && newData.child('path').isString() && newData.child('path').val().length <= 240 && newData.child('timestamp').isNumber() && newData.child('timestamp').val() <= now && newData.child('sessionId').isString() && newData.child('sessionId').val().length <= 100 && newData.child('device').isString() && (newData.child('device').val() === 'mobile' || newData.child('device').val() === 'tablet' || newData.child('device').val() === 'desktop') && (!newData.hasChild('label') || (newData.child('label').isString() && newData.child('label').val().length <= 80)) && (!newData.hasChild('durationMs') || (newData.child('durationMs').isNumber() && newData.child('durationMs').val() >= 0 && newData.child('durationMs').val() <= 30000)) && (!newData.hasChild('mediaPositionMs') || (newData.child('mediaPositionMs').isNumber() && newData.child('mediaPositionMs').val() >= 0))"
+          }
+        }
+      }
     }
   }
 }
