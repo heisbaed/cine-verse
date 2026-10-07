@@ -15,7 +15,7 @@ npm run preview  # preview build on 0.0.0.0
 
 | Layer | Tech | Notes |
 |---|---|---|
-| Routing | react-router-dom v7 | 7 routes — `/`, `/explore`, `/upcoming`, `/global`, `/watchlist`, `/movie/:id`, `*` (404) |
+| Routing | react-router-dom v7 | 10 routes — `/`, `/explore`, `/upcoming`, `/global`, `/watchlist`, `/movie/:id`, `/tv/:id`, `/download`, `/dashboard`, `*` (404) |
 | Data fetching | TanStack React Query | `staleTime: 5min`, `refetchOnWindowFocus: false`, `retry: 2` |
 | State | Zustand + persist | Watchlist in localStorage key `cine-verse-watchlist` |
 | Animations | framer-motion | Hero carousel, cards, staggered reveals, page transitions |
@@ -48,10 +48,27 @@ npm run preview  # preview build on 0.0.0.0
 | Home | `/` | Hero carousel (auto-rotate), 5 movie rows (trending, now playing, upcoming, popular, top rated) |
 | Explore | `/explore` | Debounced search (500ms), genre/year filters, grid layout |
 | MovieDetail | `/movie/:id` | Full details, cast carousel, crew, trailer modal, inline video player, reviews, watch providers, similar/recommended, share button, 5 external links |
+| TVDetail | `/tv/:id` | Series details, seasons/episodes, cast, trailers, reviews, similar/recommended |
 | Upcoming | `/upcoming` | Grouped by month, countdown badges, timeline + grid views |
 | Global | `/global` | 14 region tabs (en, hi, yo, sw, af, ko, ja, zh, fr, de, es, ar, tr, it) |
 | Watchlist | `/watchlist` | Persisted via Zustand + localStorage, grid layout, empty state |
+| Download | `/download` | Android APK release info + direct GitHub release download (holds navigation ~450ms so `apk_download` flushes to Firebase before the browser leaves) |
+| Dashboard | `/dashboard` | Private admin analytics (see Analytics below), excluded from tracking + chrome |
 | 404 | `*` | Cinematic error page with home link |
+
+## Analytics (Signalroom dashboard)
+
+- Telemetry lives in `src/lib/siteTracking.ts` (`trackEvent`, `trackPageView`, `startSessionTracking`) → Firebase RTDB `analytics/main|launch/events`
+- Web events send `platform: 'web'`, `schemaVersion: 2`, `durationMs` clamped 0–30000, writes use `serverTimestamp()`; `/dashboard` visits are never tracked and `App.tsx` skips session tracking + navbar chrome there
+- `src/lib/liveAnalytics.ts` subscribes via `onValue` (`orderByChild('timestamp')`, `startAt`, `limitToLast(50k)`) — no polling; `src/lib/analytics.ts` classifies `surface` (`web|android|ios|native|launch|unknown`) and builds sessions/views/active-time/title metrics; missing measurements render as `—`, never 0-filled
+- Dashboard filters: Platform (`all` default — phone-browser visits are `web`, not `android`) × Period (Today / 7 / 30 days); *Download button clicks* = `apk_download` events (instant), *APK downloads on GitHub* = lifetime release-asset totals via GitHub API (5-min cache, not instant)
+- Reads require admin auth (`VITE_DASHBOARD_ADMINS`, default `charlesbabuu0@gmail.com`); writes are public per `database.rules.json` (timestamp ≤ now, durationMs ≤ 30000)
+- Phone testing gotcha: site is a PWA — hard-refresh the phone browser after deploys or it runs the stale service-worker bundle
+
+## Deploy
+
+- `npm run deploy:staging` — build + deploy `hosting:mainsite` (`ourcineverse.web.app`); `deploy:launch` — alternate site; `deploy:release` — both via `firebase.release.json`, project `cine-verse-231ad`
+- Installed v1.2.3 APKs listen on EAS channel `preview` — mobile telemetry fixes must be published there (Android-only: full-platform export fails on missing `react-native-web-webview` via `react-native-youtube-iframe`)
 
 ## Components
 
