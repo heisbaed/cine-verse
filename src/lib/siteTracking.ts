@@ -50,13 +50,24 @@ const getDevice = (): TrackingEvent['device'] => {
   return 'desktop';
 };
 
+let fallbackSessionId: string | null = null;
+
 const getSessionId = (): string => {
   if (typeof window === 'undefined') return 'server';
-  const existing = window.sessionStorage.getItem(SESSION_KEY);
-  if (existing) return existing;
-  const value = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
-  window.sessionStorage.setItem(SESSION_KEY, value);
-  return value;
+  try {
+    const existing = window.sessionStorage.getItem(SESSION_KEY);
+    if (existing) return existing;
+    const value = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+    window.sessionStorage.setItem(SESSION_KEY, value);
+    return value;
+  } catch {
+    // Some WebView wrappers disable session storage. Fall back to memory so
+    // one failed storage API never kills telemetry for the whole session.
+    if (!fallbackSessionId) {
+      fallbackSessionId = `mem-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+    }
+    return fallbackSessionId;
+  }
 };
 
 export const readTrackingEvents = (): TrackingEvent[] => {
@@ -116,10 +127,13 @@ export const trackEvent = (
   try {
     window.localStorage.setItem(EVENTS_KEY, JSON.stringify(events));
     window.dispatchEvent(new Event('cineverse:tracking-updated'));
-    void publishRemoteEvent(event);
   } catch {
-    // Analytics must never interrupt the cinema experience when storage is full.
+    // Analytics must never interrupt the cinema experience when storage is
+    // full or disabled (some app wrappers disable DOM storage).
   }
+  // Remote publish runs independently of local storage so a storage failure
+  // can never silently drop the Firebase signal.
+  void publishRemoteEvent(event);
 };
 
 let stopSessionTracking: (() => void) | null = null;
@@ -132,9 +146,14 @@ export const startSessionTracking = (): (() => void) => {
   if (typeof window === 'undefined') return () => undefined;
   if (stopSessionTracking) return stopSessionTracking;
 
-  const sessionStarted = window.sessionStorage.getItem(SESSION_STARTED_KEY) !== '1';
+  let sessionStarted = true;
+  try {
+    sessionStarted = window.sessionStorage.getItem(SESSION_STARTED_KEY) !== '1';
+    if (sessionStarted) window.sessionStorage.setItem(SESSION_STARTED_KEY, '1');
+  } catch {
+    sessionStarted = true;
+  }
   if (sessionStarted) {
-    window.sessionStorage.setItem(SESSION_STARTED_KEY, '1');
     trackEvent('session_start', { label: 'app' });
   }
 
@@ -247,6 +266,10 @@ export const trackPageView = (path: string): void => {
 
 export const clearTrackingEvents = (): void => {
   if (typeof window === 'undefined') return;
-  window.localStorage.removeItem(EVENTS_KEY);
+  try {
+    window.localStorage.removeItem(EVENTS_KEY);
+  } catch {
+    // Storage may be unavailable in some app wrappers.
+  }
   window.dispatchEvent(new Event('cineverse:tracking-updated'));
 };
