@@ -27,6 +27,8 @@ export interface TrackingEvent {
   referrer?: string;
   durationMs?: number;
   mediaPositionMs?: number;
+  platform?: 'web' | 'android' | 'ios';
+  schemaVersion?: number;
 }
 
 const EVENTS_KEY = 'cineverse-signal-events-v1';
@@ -111,18 +113,24 @@ export const trackEvent = (
   } = {},
 ): void => {
   if (typeof window === 'undefined') return;
+  const path = (details.path || window.location.pathname).split(/[?#]/)[0].slice(0, 240);
+  if (/^\/dashboard(?:\/|$)/.test(path)) return;
+  let referrer: string | undefined;
+  try { if (document.referrer) referrer = new URL(document.referrer).hostname; } catch { /* An invalid referrer cannot block an event. */ }
   const event: TrackingEvent = {
     id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
     name,
     site: getSite(),
-    path: details.path || `${window.location.pathname}${window.location.search}`,
-    label: details.label?.slice(0, 80),
+    path,
+    ...(details.label ? { label: details.label.slice(0, 80) } : {}),
     timestamp: Date.now(),
     sessionId: getSessionId(),
     device: getDevice(),
-    referrer: document.referrer ? new URL(document.referrer).hostname : undefined,
+    platform: 'web',
+    schemaVersion: 2,
+    ...(referrer ? { referrer } : {}),
     ...(typeof details.durationMs === 'number' && Number.isFinite(details.durationMs)
-      ? { durationMs: Math.max(0, Math.round(details.durationMs)) }
+      ? { durationMs: Math.min(30_000, Math.max(0, Math.round(details.durationMs))) }
       : {}),
     ...(typeof details.mediaPositionMs === 'number' && Number.isFinite(details.mediaPositionMs)
       ? { mediaPositionMs: Math.max(0, Math.round(details.mediaPositionMs)) }
@@ -168,10 +176,11 @@ export const startSessionTracking = (): (() => void) => {
   }
 
   let lastPulseAt = Date.now();
+  let visible = document.visibilityState === 'visible';
   const flush = (eventName: 'session_heartbeat' | 'session_end') => {
     const now = Date.now();
     const durationMs = Math.min(Math.max(0, now - lastPulseAt), 30_000);
-    if (durationMs > 0 && document.visibilityState === 'visible') {
+    if (visible && (durationMs > 0 || eventName === 'session_end')) {
       trackEvent(eventName, { label: sessionLabel, durationMs });
     }
     lastPulseAt = now;
@@ -182,15 +191,19 @@ export const startSessionTracking = (): (() => void) => {
   const onVisibilityChange = () => {
     if (document.visibilityState === 'visible') {
       lastPulseAt = Date.now();
+      visible = true;
+      trackEvent('session_start', { label: sessionLabel });
     } else {
-      flush('session_heartbeat');
+      flush('session_end');
+      visible = false;
     }
   };
-  const onPageHide = () => flush('session_end');
+  const onPageHide = () => { flush('session_end'); visible = false; };
   document.addEventListener('visibilitychange', onVisibilityChange);
   window.addEventListener('pagehide', onPageHide);
 
   const cleanup = () => {
+    flush('session_end');
     window.clearInterval(interval);
     document.removeEventListener('visibilitychange', onVisibilityChange);
     window.removeEventListener('pagehide', onPageHide);
@@ -202,13 +215,12 @@ export const startSessionTracking = (): (() => void) => {
 
 const publishRemoteEvent = async (event: TrackingEvent): Promise<void> => {
   try {
-    const { getDatabase, push, ref, set } = await import('firebase/database');
+    const { getDatabase, push, ref, set, serverTimestamp } = await import('firebase/database');
     const database = getDatabase(firebaseApp);
     const eventRef = push(ref(database, `analytics/${event.site}/events`));
-    await set(eventRef, event);
-  } catch {
-    // Local telemetry remains available if Firebase is offline or rules reject
-    // an event from an older cached bundle.
+    await set(eventRef, { ...event, timestamp: serverTimestamp() });
+  } catch (error) {
+    console.warn('Analytics event could not be delivered', error instanceof Error ? error.message : 'Unknown error');
   }
 };
 

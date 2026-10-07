@@ -36,12 +36,12 @@ const App: React.FC = () => {
     trackPageView(`${location.pathname}${location.search}`);
   }, [location.pathname, location.search]);
 
-  useEffect(() => startSessionTracking(), []);
+  useEffect(() => { if (!isDashboard) return startSessionTracking(); }, [isDashboard]);
 
   return (
     <>
       <div className="app-frame flex min-h-screen flex-col bg-background text-white">
-        <div className="relative z-10 flex min-h-screen flex-col lg:ml-[72px]">
+        <div className={`relative z-10 flex min-h-screen flex-col ${isDashboard ? '' : 'lg:ml-[72px]'}`}>
           {!isDashboard && <Navbar />}
           <AnimatePresence mode="wait" initial={false}>
             <motion.main
