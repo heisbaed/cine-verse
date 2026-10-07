@@ -1,6 +1,6 @@
 const API_BASE = 'https://movies-api.accel.li/api/v2';
 
-export type TorrentSource = 'YTS' | 'Bay';
+export type TorrentSource = 'YTS' | 'Bay' | 'Torrentio';
 
 export interface TorrentPackage {
   quality: string;
@@ -310,13 +310,99 @@ export interface TorrentResult {
   bayAvailable: boolean;
 }
 
+interface TorrentioStream {
+  title?: string;
+  infoHash?: string;
+  behaviorHints?: {
+    filename?: string;
+  };
+}
+
+interface TorrentioResponse {
+  streams?: TorrentioStream[];
+}
+
+const parseSizeToBytes = (size: string): number => {
+  const match = size.match(/([\d.,]+)\s*([KMGT]?B)/i);
+  if (!match) return 0;
+  const value = Number(match[1].replace(/,/g, ''));
+  if (!Number.isFinite(value)) return 0;
+  const unit = match[2].toUpperCase();
+  const factor =
+    unit === 'TB' ? 1024 ** 4
+    : unit === 'GB' ? 1024 ** 3
+    : unit === 'MB' ? 1024 ** 2
+    : unit === 'KB' ? 1024
+    : 1;
+  return Math.round(value * factor);
+};
+
+// Torrentio (Stremio addon API) aggregates ThePirateBay, 1337x, RARBG and
+// others, and unlike apibay.org it sends `Access-Control-Allow-Origin: *`,
+// so browsers can call it directly with no CORS proxy.
+const getTorrentioPackages = async (
+  imdbId?: string | null,
+): Promise<{ packages: TorrentPackage[]; indexOk: boolean }> => {
+  const cleanId = imdbId?.toLowerCase().trim() || '';
+  if (!/^tt\d+$/.test(cleanId)) return { packages: [], indexOk: false };
+  try {
+    const response = await fetchWithTimeout(
+      `https://torrentio.strem.fun/stream/movie/${cleanId}.json`,
+      12000,
+    );
+    if (!response.ok) return { packages: [], indexOk: false };
+    const payload = (await response.json()) as TorrentioResponse;
+    const streams = payload.streams || [];
+    const seen = new Set<string>();
+    const packages: TorrentPackage[] = [];
+    for (const stream of streams) {
+      const hash = stream.infoHash?.toUpperCase() || '';
+      if (!hash || /^0+$/.test(hash) || seen.has(hash)) continue;
+      seen.add(hash);
+      const lines = (stream.title || '').split('\n');
+      const rawName =
+        lines[0]?.trim() ||
+        stream.behaviorHints?.filename?.trim() ||
+        'Unknown release';
+      const meta = lines.slice(1).join(' ');
+      const releaseName = decodeHtml(rawName);
+      const parsed = parseReleaseName(
+        `${releaseName} ${stream.behaviorHints?.filename || ''}`,
+      );
+      const seeds = Number(meta.match(/👤\s*(\d+)/u)?.[1]) || 0;
+      const sizeLabel = meta.match(/💾\s*([\d.,]+\s*[KMGT]?B)/i)?.[1] || 'Unknown size';
+      const sizeBytes = parseSizeToBytes(sizeLabel);
+      packages.push({
+        quality: `${parsed.resolution} ${parsed.source}`.trim(),
+        resolution: parsed.resolution,
+        type: parsed.source,
+        size: sizeLabel,
+        sizeBytes,
+        seeds,
+        peers: 0,
+        torrentUrl: `https://itorrents.org/torrent/${hash}.torrent`,
+        magnetUrl: buildMagnetUrl(hash, releaseName),
+        source: 'Torrentio',
+        releaseName,
+      });
+    }
+    return { packages, indexOk: true };
+  } catch {
+    return { packages: [], indexOk: false };
+  }
+};
+
 export const getTorrentPackages = async (options: {
   imdbId?: string | null;
   title: string;
   year?: string;
 }): Promise<TorrentResult> => {
-  const [yts, bay] = await Promise.all([
+  const [yts, torrentio, bay] = await Promise.all([
     getYtsPackages(options).catch(() => [] as TorrentPackage[]),
+    getTorrentioPackages(options.imdbId).catch(() => ({
+      packages: [] as TorrentPackage[],
+      indexOk: false,
+    })),
     getBayPackages(options).catch(() => ({
       packages: [] as TorrentPackage[],
       indexOk: false,
@@ -324,11 +410,11 @@ export const getTorrentPackages = async (options: {
   ]);
   const seen = new Set<string>();
   const merged: TorrentPackage[] = [];
-  for (const pkg of [...yts, ...bay.packages]) {
+  for (const pkg of [...yts, ...torrentio.packages, ...bay.packages]) {
     const hash = pkg.magnetUrl.match(/btih:([A-Fa-f0-9]+)/)?.[1]?.toUpperCase();
     if (hash && seen.has(hash)) continue;
     if (hash) seen.add(hash);
     merged.push(pkg);
   }
-  return { packages: merged, bayAvailable: bay.indexOk };
+  return { packages: merged, bayAvailable: torrentio.indexOk || bay.indexOk };
 };

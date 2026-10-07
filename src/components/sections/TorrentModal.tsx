@@ -242,8 +242,8 @@ const TorrentModal: React.FC<TorrentModalProps> = ({
                 )}
                 {!bayAvailable && (
                   <p className="text-[11px] leading-4 text-white/40">
-                    Bay index unreachable from this network — showing YTS
-                    results only.
+                    Extra indexes unreachable from this network — showing
+                    limited results only.
                   </p>
                 )}
               </div>
