@@ -126,9 +126,11 @@ interface BayEntry {
 const BAY_TV_CATEGORIES = new Set(['205', '208']);
 
 const BAY_PROXIES = [
+  (url: string) => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
   (url: string) => `https://api.cors.lol/?url=${encodeURIComponent(url)}`,
   (url: string) => `https://corsproxy.io/?url=${encodeURIComponent(url)}`,
-  (url: string) => `https://api.codetabs.com/v1/proxy?quest=${url}`,
+  (url: string) => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`,
+  (url: string) => `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`,
 ];
 
 const fetchWithTimeout = async (url: string, timeoutMs: number): Promise<Response> => {
@@ -141,20 +143,47 @@ const fetchWithTimeout = async (url: string, timeoutMs: number): Promise<Respons
   }
 };
 
-const fetchBayEntries = async (query: string): Promise<BayEntry[]> => {
-  const directUrl = `https://apibay.org/q.php?q=${encodeURIComponent(query)}&cat=200`;
-  const attempts = [directUrl, ...BAY_PROXIES.map((proxy) => proxy(directUrl))];
-  for (const url of attempts) {
+const parseBayPayload = (raw: unknown): BayEntry[] | null => {
+  // AllOrigins /get wraps the body as { contents: "<json string>" }.
+  if (
+    raw &&
+    typeof raw === 'object' &&
+    !Array.isArray(raw) &&
+    typeof (raw as { contents?: unknown }).contents === 'string'
+  ) {
     try {
-      const response = await fetchWithTimeout(url, 12000);
-      if (!response.ok) continue;
-      const entries = (await response.json()) as BayEntry[];
-      if (Array.isArray(entries)) return entries;
+      const inner = JSON.parse((raw as { contents: string }).contents) as unknown;
+      return Array.isArray(inner) ? (inner as BayEntry[]) : null;
     } catch {
-      continue;
+      return null;
     }
   }
-  return [];
+  return Array.isArray(raw) ? (raw as BayEntry[]) : null;
+};
+
+const fetchBayViaUrl = async (url: string): Promise<BayEntry[]> => {
+  const response = await fetchWithTimeout(url, 10000);
+  if (!response.ok) throw new Error(`HTTP ${response.status}`);
+  const payload = (await response.json()) as unknown;
+  const entries = parseBayPayload(payload);
+  if (!entries) throw new Error('Invalid Bay payload');
+  return entries;
+};
+
+const fetchBayEntries = async (
+  query: string,
+): Promise<{ entries: BayEntry[]; reachable: boolean }> => {
+  const directUrl = `https://apibay.org/q.php?q=${encodeURIComponent(query)}&cat=200`;
+  const attempts = [directUrl, ...BAY_PROXIES.map((proxy) => proxy(directUrl))];
+  // Race all attempts in parallel — direct fetch fails on CORS, so the
+  // first proxy that answers wins instead of waiting 4 x 12s sequentially.
+  const results = await Promise.allSettled(attempts.map((url) => fetchBayViaUrl(url)));
+  for (const result of results) {
+    if (result.status === 'fulfilled') {
+      return { entries: result.value, reachable: true };
+    }
+  }
+  return { entries: [], reachable: false };
 };
 
 const getBayPackages = async (options: {
@@ -172,8 +201,8 @@ const getBayPackages = async (options: {
   let indexOk = false;
 
   for (const query of queries) {
-    const entries = await fetchBayEntries(query);
-    if (entries.length > 0) indexOk = true;
+    const { entries, reachable } = await fetchBayEntries(query);
+    if (reachable) indexOk = true;
     for (const entry of entries) {
       const hash = entry.info_hash?.toUpperCase() || '';
       if (!hash || /^0+$/.test(hash) || seen.has(hash)) continue;

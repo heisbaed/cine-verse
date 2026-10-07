@@ -32,6 +32,7 @@ import TrailerSection from '@/components/sections/TrailerSection';
 import VideoPlayer from '@/components/sections/VideoPlayer';
 import ErrorState from '@/components/ui/ErrorState';
 import { useSEO } from '@/hooks/useSEO';
+import { trackEvent } from '@/lib/siteTracking';
 import { useViewHistoryStore } from '@/store/viewHistoryStore';
 import { getTVEmbedSources } from '@/utils/embedSources';
 
@@ -180,6 +181,7 @@ const TVDetail: React.FC = () => {
   );
 
   const showSeries = () => {
+    trackEvent('cta_click', { label: 'play' });
     setWatchMode('series');
     window.requestAnimationFrame(() => {
       mediaSectionRef.current?.scrollIntoView({
@@ -190,6 +192,7 @@ const TVDetail: React.FC = () => {
   };
 
   const shareSeries = async () => {
+    trackEvent('cta_click', { label: 'share' });
     const shareData = {
       title: details.name,
       text: `Discover ${details.name} on Cine-verse.`,
@@ -355,6 +358,7 @@ const TVDetail: React.FC = () => {
                 {trailer && (
                   <button
                     onClick={() => {
+                      trackEvent('cta_click', { label: 'trailer-open' });
                       setWatchMode('trailer');
                       setTrailerOpen(true);
                     }}

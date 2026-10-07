@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Activity,
   BarChart3,
+  Clapperboard,
   Clock3,
   Database,
   Download,
@@ -24,6 +25,7 @@ import {
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useAuth } from '@/contexts/AuthContext';
+import { getMovieDetails, getTVDetails } from '@/api/tmdb';
 import {
   readRemoteTrackingEvents,
   type TrackingEvent,
@@ -106,6 +108,7 @@ const Dashboard: React.FC = () => {
     typeof window !== 'undefined' && window.localStorage.getItem('cine-verse-theme') === 'light' ? 'light' : 'dark',
   );
   const [source, setSource] = useState<'local' | 'loading' | 'live' | 'fallback'>('local');
+  const [sourceError, setSourceError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState(Date.now());
   const [githubDownloads, setGithubDownloads] = useState<number | null>(null);
   const [activeSection, setActiveSection] = useState('overview');
@@ -115,6 +118,7 @@ const Dashboard: React.FC = () => {
     if (!isAuthorized) {
       setEvents([]);
       setSource('local');
+      setSourceError(null);
       setLastUpdated(Date.now());
       return;
     }
@@ -123,10 +127,12 @@ const Dashboard: React.FC = () => {
       const remote = await readRemoteTrackingEvents(30);
       setEvents(remote);
       setSource('live');
+      setSourceError(null);
       setLastUpdated(Date.now());
-    } catch {
+    } catch (error) {
       setEvents([]);
       setSource('fallback');
+      setSourceError(error instanceof Error ? error.message : 'Firebase read failed');
       setLastUpdated(Date.now());
     }
   }, [isAuthorized]);
@@ -135,7 +141,13 @@ const Dashboard: React.FC = () => {
     void refresh();
     const onUpdate = () => void refresh();
     window.addEventListener('cineverse:tracking-updated', onUpdate);
-    return () => window.removeEventListener('cineverse:tracking-updated', onUpdate);
+    const interval = window.setInterval(() => {
+      if (document.visibilityState === 'visible') void refresh();
+    }, 15_000);
+    return () => {
+      window.removeEventListener('cineverse:tracking-updated', onUpdate);
+      window.clearInterval(interval);
+    };
   }, [refresh]);
 
   useEffect(() => {
@@ -231,7 +243,7 @@ const Dashboard: React.FC = () => {
   }, [filtered]);
 
   const eventMix = useMemo(() => {
-    const names: TrackingEvent['name'][] = ['page_view', 'session_heartbeat', 'media_progress', 'apk_download', 'search'];
+    const names: TrackingEvent['name'][] = ['page_view', 'session_heartbeat', 'media_progress', 'media_start', 'cta_click', 'apk_download', 'search'];
     return names.map((name) => ({ name: name.replace('_', ' '), value: filtered.filter((event) => event.name === name).length }));
   }, [filtered]);
 
@@ -245,6 +257,64 @@ const Dashboard: React.FC = () => {
     launch: filtered.filter((event) => event.site === 'launch').length,
   }), [filtered]);
 
+  const latestTs = useMemo(() => (
+    filtered.length ? Math.max(...filtered.map((event) => event.timestamp)) : null
+  ), [filtered]);
+
+  interface WatchedTitle {
+    key: string;
+    kind: 'movie' | 'tv';
+    id: number;
+    views: number;
+    watchMs: number;
+    torrents: number;
+  }
+
+  const mostWatched = useMemo(() => {
+    const map = new Map<string, WatchedTitle>();
+    filtered.forEach((event) => {
+      const match = event.path.split('?')[0].match(/^\/(movie|tv)\/(\d+)/);
+      if (!match) return;
+      const kind = match[1] as 'movie' | 'tv';
+      const id = Number(match[2]);
+      const key = `${kind}-${id}`;
+      const entry = map.get(key) || { key, kind, id, views: 0, watchMs: 0, torrents: 0 };
+      if (event.name === 'page_view' || event.name === 'media_view') entry.views += 1;
+      if (event.name === 'media_progress' || event.name === 'media_end') entry.watchMs += event.durationMs || 0;
+      if (event.name === 'cta_click' && (event.label || '').startsWith('torrent')) entry.torrents += 1;
+      map.set(key, entry);
+    });
+    return [...map.values()]
+      .sort((a, b) => (b.views + b.watchMs / 60000 + b.torrents * 2) - (a.views + a.watchMs / 60000 + a.torrents * 2))
+      .slice(0, 5);
+  }, [filtered]);
+
+  const [titles, setTitles] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    const missing = mostWatched.filter((item) => !titles[item.key]);
+    if (!missing.length) return;
+    let cancelled = false;
+    (async () => {
+      const next: Record<string, string> = {};
+      for (const item of missing) {
+        try {
+          if (item.kind === 'movie') {
+            const details = await getMovieDetails(item.id);
+            next[item.key] = details.title || `Movie #${item.id}`;
+          } else {
+            const details = await getTVDetails(item.id);
+            next[item.key] = details.name || `Series #${item.id}`;
+          }
+        } catch {
+          next[item.key] = `${item.kind === 'movie' ? 'Movie' : 'Series'} #${item.id}`;
+        }
+      }
+      if (!cancelled) setTitles((prev) => ({ ...prev, ...next }));
+    })();
+    return () => { cancelled = true; };
+  }, [mostWatched, titles]);
+
   const jumpTo = (id: string): void => {
     setActiveSection(id);
     document.getElementById(`signal-${id}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -254,6 +324,7 @@ const Dashboard: React.FC = () => {
     { id: 'overview', label: 'Overview', icon: LayoutDashboard },
     { id: 'traffic', label: 'Traffic', icon: BarChart3 },
     { id: 'surfaces', label: 'Surfaces', icon: Globe2 },
+    { id: 'titles', label: 'Titles', icon: Clapperboard },
     { id: 'events', label: 'Events', icon: Activity },
   ];
 
@@ -321,7 +392,7 @@ const Dashboard: React.FC = () => {
 
         <main className="signal-main">
           <header className="signal-topbar">
-            <span className="signal-live">{source === 'loading' ? 'Syncing' : source === 'live' ? 'Firebase live · admin' : 'Waiting for Firebase'}</span>
+            <span className="signal-live" title={sourceError || undefined}>{source === 'loading' ? 'Syncing' : source === 'live' ? `Firebase live · admin · ${filtered.length} signals` : source === 'fallback' ? 'Firebase blocked — see error below' : 'Waiting for Firebase'}</span>
             <div className="signal-topbar-actions">
               {user ? (
                 <button className="signal-profile" type="button" title="Sign out" onClick={() => void logOut()}>
@@ -342,6 +413,11 @@ const Dashboard: React.FC = () => {
             </div>
           </header>
           {authError && <div className="signal-auth-error" role="status">{authError}</div>}
+          {source === 'fallback' && sourceError && (
+            <div className="signal-auth-error" role="alert">
+              Firebase read failed: {sourceError}. Check your connection and database rules, then press Refresh.
+            </div>
+          )}
 
           <section className="signal-heading" id="signal-overview">
             <div className="signal-eyebrow">Cine-verse / Signalroom</div>
@@ -353,7 +429,7 @@ const Dashboard: React.FC = () => {
             <div className="signal-hero-copy">
               <div className="signal-eyebrow">{range} day window / {site === 'all' ? 'all surfaces' : site}</div>
               <h2>Follow the pulse.</h2>
-              <p>Updated {formatTime(lastUpdated)} · {filtered.length} captured signals · {sessions} total sessions, {activeNow} online now</p>
+              <p>Updated {formatTime(lastUpdated)} · {filtered.length} captured signals · {sessions} total sessions, {activeNow} online now{latestTs ? ` · newest signal ${relativeTime(latestTs)} ago` : ' · no signals yet'}</p>
             </div>
             <div className="signal-health-stage" aria-label="Live session health monitor">
               <div className="signal-health-top"><span>Heartometer · users per 5 min · last hour</span><span className={heartbeatLive ? 'signal-health-status is-live' : 'signal-health-status'}>{heartbeatLive ? `${activeNow} online` : 'Awaiting pulse'}</span></div>
@@ -437,6 +513,25 @@ const Dashboard: React.FC = () => {
             </div>
           </section>
 
+          <section className="signal-section" id="signal-titles">
+            <div className="signal-section-label"><span>Most watched</span><span>titles in window</span></div>
+            <div className="signal-card signal-list-card">
+              <div className="signal-card-heading"><div><h3>Top titles</h3><p>Visits, native watch time and torrent taps per movie or series.</p></div><Clapperboard size={18} color="var(--signal-accent)" /></div>
+              {mostWatched.length ? (
+                <div className="signal-list">
+                  {mostWatched.map((item) => (
+                    <div className="signal-list-row" key={item.key}>
+                      <span className="max-w-[220px] truncate">{titles[item.key] || `${item.kind === 'movie' ? 'Movie' : 'Series'} #${item.id}`}</span>
+                      <span>{item.kind === 'movie' ? 'film' : 'series'} · {formatNumber(item.views)} visits · {formatDuration(item.watchMs)} watched · {formatNumber(item.torrents)} torrent taps</span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="signal-empty">No title activity in this window. Open a movie on any device and press Refresh.</div>
+              )}
+            </div>
+          </section>
+
           <section className="signal-section" id="signal-events">
             <div className="signal-section-label"><span>Recent stream</span><span>{filtered.length} signals</span></div>
             <div className="signal-feed">
@@ -456,7 +551,7 @@ const Dashboard: React.FC = () => {
             <select aria-label="Time window" value={range} onChange={(event) => setRange(Number(event.target.value) as Range)} className="ml-2 rounded-md border border-white/10 bg-transparent px-2 py-1 text-[0.65rem] text-inherit"><option value={7}>7 days</option><option value={30}>30 days</option></select>
             <span className="mx-2">·</span>
             <select aria-label="Surface" value={site} onChange={(event) => setSite(event.target.value as SiteFilter)} className="rounded-md border border-white/10 bg-transparent px-2 py-1 text-[0.65rem] text-inherit"><option value="all">All surfaces</option><option value="main">Main</option><option value="launch">Launch</option></select>
-            <span className="float-right">Admin: {user.email}</span>
+            <span className="float-right">Admin: {user.email} · auto-refresh 15s{latestTs ? ` · newest ${relativeTime(latestTs)} ago` : ''}</span>
           </div>
         </main>
       </div>

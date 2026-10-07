@@ -1,7 +1,6 @@
 import React from 'react';
-import { Check, Download, Globe, Play, ShieldCheck, Smartphone } from 'lucide-react';
+import { Check, Download, Globe, ShieldCheck, Smartphone } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { getImageUrl } from '@/api/tmdb';
 import { APP_RELEASE } from '@/config/appRelease';
 import { useSEO } from '@/hooks/useSEO';
 import { trackEvent } from '@/lib/siteTracking';
@@ -10,6 +9,12 @@ const installSteps = [
   ['Download', 'Download the APK directly from Cine-verse.'],
   ['Allow', 'If Android asks, allow installation from your browser.'],
   ['Install', 'Open the APK, tap Install, then launch the app.'],
+];
+
+const screenshots = [
+  { src: '/screenshots/app-home.jpg', alt: 'Cine-verse Android app home screen with trending movies', caption: 'Home' },
+  { src: '/screenshots/app-featured.jpg', alt: 'Cine-verse Android app featured premiere screen', caption: 'Featured premiere' },
+  { src: '/screenshots/app-detail.jpg', alt: 'Cine-verse Android app movie details screen', caption: 'Movie details' },
 ];
 
 const DownloadPage: React.FC = () => {
@@ -23,7 +28,7 @@ const DownloadPage: React.FC = () => {
   return (
     <div className="pb-28">
       <section className="border-b border-white/10 bg-surface">
-        <div className="mx-auto grid max-w-[1280px] items-center gap-12 px-5 py-16 sm:px-8 sm:py-20 lg:grid-cols-[1fr_380px] lg:px-12 lg:py-24">
+        <div className="mx-auto max-w-[1280px] px-5 py-16 sm:px-8 sm:py-20 lg:px-12 lg:py-24">
           <div className="max-w-2xl">
             <p className="text-xs font-black uppercase tracking-[0.28em] text-gold">Android release</p>
             <h1 className="cinema-title mt-4 text-5xl font-black uppercase leading-[0.9] tracking-[-0.03em] sm:text-7xl">Take Cine-verse with you.</h1>
@@ -50,28 +55,15 @@ const DownloadPage: React.FC = () => {
               <div><dt className="text-white/40">Updated</dt><dd className="mt-1 font-bold">{APP_RELEASE.updatedAt}</dd></div>
             </dl>
           </div>
-          <div className="mx-auto w-full max-w-[270px]" aria-label="Cine-verse Android app preview">
-            <div className="media-on-dark rounded-[2.25rem] border border-white/20 bg-black p-2 text-white shadow-2xl">
-              <div className="relative aspect-[9/19] overflow-hidden rounded-[1.8rem] bg-[#101010] p-3 pt-8 text-white">
-                <span className="absolute left-1/2 top-2 h-4 w-16 -translate-x-1/2 rounded-full bg-black" />
-                <div className="flex items-center justify-between text-[9px] font-bold"><span>CINE-VERSE</span><span className="text-gold">ANDROID</span></div>
-                <div className="relative mt-3 overflow-hidden">
-                  <img src={getImageUrl('/qeQJx07rK2xm8SD2sJxFKhE7gs0.jpg', 'w780')} alt="Featured film in the Cine-verse Android app" className="h-48 w-full object-cover" />
-                  <div className="absolute inset-x-0 bottom-0 bg-black/80 p-3">
-                    <p className="text-[8px] font-bold uppercase tracking-widest text-gold">Now featured</p>
-                    <p className="mt-1 text-sm font-black">Spider-Man: Brand New Day</p>
-                    <span className="mt-2 inline-flex items-center gap-1 bg-gold px-2 py-1 text-[8px] font-black text-black"><Play size={8} fill="currentColor" /> Details</span>
-                  </div>
+          <div className="mt-12 grid gap-6 sm:grid-cols-3" aria-label="Cine-verse Android app screenshots">
+            {screenshots.map((shot) => (
+              <figure key={shot.src} className="mx-auto w-full max-w-[270px]">
+                <div className="media-on-dark overflow-hidden rounded-[2.25rem] border border-white/20 bg-black p-2 shadow-2xl">
+                  <img src={shot.src} alt={shot.alt} loading="lazy" className="aspect-[9/19] w-full rounded-[1.8rem] object-cover object-top" />
                 </div>
-                <p className="mt-4 text-[10px] font-black uppercase tracking-wider">Trending movies</p>
-                <div className="mt-2 grid grid-cols-3 gap-2">
-                  {['/bjiS5ipwxb9JFy3XRRN4OAilSeX.jpg', '/5rhTDKUhPYvpdQIijFIs5VoWsON.jpg', '/i7UyjfPio0VFHB9rBUZSFyhOoM8.jpg'].map((poster) => (
-                    <img key={poster} src={getImageUrl(poster, 'w185')} alt="" className="aspect-[2/3] w-full object-cover" />
-                  ))}
-                </div>
-                <div className="absolute inset-x-0 bottom-0 flex justify-around border-t border-white/15 bg-[#151515] py-3 text-[8px] font-bold text-white/55"><span className="text-gold">Home</span><span>Explore</span><span>Saved</span><span>Profile</span></div>
-              </div>
-            </div>
+                <figcaption className="mt-3 text-center text-[10px] font-black uppercase tracking-[0.24em] text-white/45">{shot.caption}</figcaption>
+              </figure>
+            ))}
           </div>
         </div>
       </section>

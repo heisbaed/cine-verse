@@ -1,6 +1,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { Play, ExternalLink } from 'lucide-react';
+import { trackEvent } from '@/lib/siteTracking';
 import type { Video } from '@/types/tmdb';
 
 interface TrailerSectionProps {
@@ -30,6 +31,7 @@ const TrailerSection: React.FC<TrailerSectionProps> = ({ videos, title }) => {
           href={`https://www.youtube.com/results?search_query=${encodeURIComponent(title + ' official trailer')}`}
           target="_blank"
           rel="noopener noreferrer"
+          onClick={() => trackEvent('cta_click', { label: 'trailer-youtube' })}
           className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-white/10 text-white border border-white/20 hover:bg-white/20 transition-all focus:outline-none focus:ring-2 focus:ring-gold/50"
           aria-label={`Search for ${title} trailer on YouTube`}
         >

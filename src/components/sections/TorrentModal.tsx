@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { AnimatePresence, motion } from 'framer-motion';
 import { ArrowDownWideNarrow, Copy, Download, Magnet, X } from 'lucide-react';
 import { getTorrentPackages } from '@/api/torrents';
+import { trackEvent } from '@/lib/siteTracking';
 
 type SortKey = 'seeds' | 'quality' | 'size-asc' | 'size-desc';
 
@@ -111,7 +112,12 @@ const TorrentModal: React.FC<TorrentModalProps> = ({
   if (!isOpen) return null;
 
   const copyMagnet = async (magnetUrl: string) => {
+    trackEvent('cta_click', { label: 'torrent-copy' });
     await navigator.clipboard.writeText(magnetUrl);
+  };
+
+  const trackTorrentTap = (action: 'torrent-file' | 'torrent-magnet', quality: string) => {
+    trackEvent('cta_click', { label: `${action} ${quality}`.slice(0, 80) });
   };
 
   return (
@@ -189,37 +195,49 @@ const TorrentModal: React.FC<TorrentModalProps> = ({
                   </span>
                 </div>
                 {resolutions.length > 1 && (
-                  <div className="flex flex-wrap gap-1.5" role="group" aria-label="Filter by quality">
-                    {['all', ...resolutions].map((item) => (
-                      <button
-                        key={item}
-                        onClick={() => setResolution(item)}
-                        className={`rounded-full border px-3.5 py-1.5 text-[10px] font-black uppercase tracking-wider transition-colors ${
-                          resolution === item
-                            ? 'border-gold bg-gold text-black'
-                            : 'border-white/15 text-white/55 hover:border-gold/60 hover:text-gold'
-                        }`}
-                      >
-                        {item === 'all' ? 'All' : item}
-                      </button>
-                    ))}
+                  <div className="flex flex-wrap items-center gap-2">
+                    <label
+                      htmlFor="torrent-quality"
+                      className="text-[10px] font-black uppercase tracking-[0.18em] text-white/45"
+                    >
+                      Quality
+                    </label>
+                    <select
+                      id="torrent-quality"
+                      value={resolution}
+                      onChange={(event) => setResolution(event.target.value)}
+                      className="min-h-9 rounded-lg border border-white/15 bg-black px-3 text-xs font-bold text-white outline-none focus:border-gold"
+                    >
+                      <option value="all">All qualities</option>
+                      {resolutions.map((item) => (
+                        <option key={item} value={item}>
+                          {item}
+                        </option>
+                      ))}
+                    </select>
                   </div>
                 )}
                 {sources.length > 1 && (
-                  <div className="flex flex-wrap gap-1.5" role="group" aria-label="Filter by index">
-                    {['all', ...sources].map((item) => (
-                      <button
-                        key={item}
-                        onClick={() => setSource(item)}
-                        className={`rounded-full border px-3.5 py-1.5 text-[10px] font-black uppercase tracking-wider transition-colors ${
-                          source === item
-                            ? 'border-gold bg-gold text-black'
-                            : 'border-white/15 text-white/55 hover:border-gold/60 hover:text-gold'
-                        }`}
-                      >
-                        {item === 'all' ? 'All indexes' : item}
-                      </button>
-                    ))}
+                  <div className="flex flex-wrap items-center gap-2">
+                    <label
+                      htmlFor="torrent-source"
+                      className="text-[10px] font-black uppercase tracking-[0.18em] text-white/45"
+                    >
+                      Server
+                    </label>
+                    <select
+                      id="torrent-source"
+                      value={source}
+                      onChange={(event) => setSource(event.target.value)}
+                      className="min-h-9 rounded-lg border border-white/15 bg-black px-3 text-xs font-bold text-white outline-none focus:border-gold"
+                    >
+                      <option value="all">All servers</option>
+                      {sources.map((item) => (
+                        <option key={item} value={item}>
+                          {item}
+                        </option>
+                      ))}
+                    </select>
                   </div>
                 )}
                 {!bayAvailable && (
@@ -305,6 +323,7 @@ const TorrentModal: React.FC<TorrentModalProps> = ({
                         href={pkg.torrentUrl}
                         target="_blank"
                         rel="noopener noreferrer"
+                        onClick={() => trackTorrentTap('torrent-file', pkg.quality)}
                         className="inline-flex min-h-10 flex-1 items-center justify-center gap-2 rounded-lg bg-gold px-4 text-[11px] font-black uppercase tracking-wider text-black hover:bg-white"
                       >
                         <Download size={14} /> Torrent file
@@ -313,6 +332,7 @@ const TorrentModal: React.FC<TorrentModalProps> = ({
                         href={pkg.magnetUrl}
                         target="_blank"
                         rel="noopener noreferrer"
+                        onClick={() => trackTorrentTap('torrent-magnet', pkg.quality)}
                         className="inline-flex min-h-10 flex-1 items-center justify-center gap-2 rounded-lg border border-gold/50 px-4 text-[11px] font-black uppercase tracking-wider text-gold hover:bg-gold hover:text-black"
                       >
                         <Magnet size={14} /> Magnet

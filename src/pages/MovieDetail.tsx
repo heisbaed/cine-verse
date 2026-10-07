@@ -17,6 +17,7 @@ import TrailerModal from '@/components/sections/TrailerModal';
 import VideoPlayer from '@/components/sections/VideoPlayer';
 import ErrorState from '@/components/ui/ErrorState';
 import { useSEO } from '@/hooks/useSEO';
+import { trackEvent } from '@/lib/siteTracking';
 import { useViewHistoryStore } from '@/store/viewHistoryStore';
 import { getMovieEmbedSources } from '@/utils/embedSources';
 
@@ -62,11 +63,23 @@ const MovieDetail: React.FC = () => {
   const releaseYear = movie.release_date?.split('-')[0];
 
   const playMovie = () => {
+    trackEvent('cta_click', { label: 'play' });
     setShowPlayer(true);
     window.requestAnimationFrame(() => mediaRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
   };
 
+  const openTorrents = () => {
+    trackEvent('cta_click', { label: 'torrent-open' });
+    setTorrentOpen(true);
+  };
+
+  const openTrailer = () => {
+    trackEvent('cta_click', { label: 'trailer-open' });
+    setTrailerOpen(true);
+  };
+
   const shareMovie = async () => {
+    trackEvent('cta_click', { label: 'share' });
     const data = { title: movie.title, text: `Watch ${movie.title} on Cine-verse.`, url: window.location.href };
     if (navigator.share) await navigator.share(data);
     else await navigator.clipboard.writeText(window.location.href);
@@ -93,8 +106,8 @@ const MovieDetail: React.FC = () => {
 
               <div className="mt-6 flex flex-wrap gap-3">
                 <button onClick={playMovie} className="inline-flex min-h-12 items-center gap-2 rounded-lg bg-gold px-6 text-xs font-black uppercase tracking-[0.12em] text-black hover:bg-white"><Play size={17} fill="currentColor" /> Play movie</button>
-                <button onClick={() => setTorrentOpen(true)} className="inline-flex min-h-12 items-center gap-2 rounded-lg border border-gold/60 px-6 text-xs font-black uppercase tracking-[0.12em] text-gold hover:bg-gold hover:text-black"><Download size={17} /> Download torrent</button>
-                {trailer && <button onClick={() => setTrailerOpen(true)} className="inline-flex min-h-12 items-center gap-2 rounded-lg border border-white/20 px-5 text-xs font-bold text-white/70 hover:border-white hover:text-white"><Play size={15} /> Trailer</button>}
+                <button onClick={() => openTorrents()} className="inline-flex min-h-12 items-center gap-2 rounded-lg border border-gold/60 px-6 text-xs font-black uppercase tracking-[0.12em] text-gold hover:bg-gold hover:text-black"><Download size={17} /> Download torrent</button>
+                {trailer && <button onClick={() => openTrailer()} className="inline-flex min-h-12 items-center gap-2 rounded-lg border border-white/20 px-5 text-xs font-bold text-white/70 hover:border-white hover:text-white"><Play size={15} /> Trailer</button>}
                 <button onClick={() => void shareMovie()} className="grid h-12 w-12 place-items-center rounded-lg border border-white/20 text-white/60 hover:text-white" aria-label="Share movie"><Share2 size={17} /></button>
               </div>
 
