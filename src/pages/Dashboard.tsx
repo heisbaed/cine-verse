@@ -538,7 +538,7 @@ const Dashboard: React.FC = () => {
             <div className="signal-feed">
               <div className="signal-card signal-list-card">
                 <div className="signal-card-heading"><div><h3>Latest events</h3><p>Names and raw query text stay out of telemetry.</p></div><Database size={18} color="var(--signal-accent)" /></div>
-                {filtered.length ? <div>{filtered.slice(-6).reverse().map((event) => <div className="signal-feed-row" key={event.id}><span className="signal-feed-dot" /><span className="signal-feed-main">{event.name} · {event.site}{event.durationMs ? ` · ${formatDuration(event.durationMs)}` : ''}</span><span className="signal-feed-meta">{relativeTime(event.timestamp)}</span></div>)}</div> : <div className="signal-empty">No signals in this window.</div>}
+                {filtered.length ? <div>{filtered.slice(-6).reverse().map((event) => <div className="signal-feed-row" key={event.id}><span className="signal-feed-dot" /><span className="signal-feed-main">{event.name} · {event.site}{event.label ? ` · ${event.label}` : ''}{event.durationMs ? ` · ${formatDuration(event.durationMs)}` : ''}</span><span className="signal-feed-meta">{relativeTime(event.timestamp)}</span></div>)}</div> : <div className="signal-empty">No signals in this window.</div>}
               </div>
               <div className="signal-card signal-list-card">
                 <div className="signal-card-heading"><div><h3>Top paths</h3><p>Most active routes</p></div><Search size={18} color="var(--signal-accent-2)" /></div>

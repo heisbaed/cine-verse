@@ -52,6 +52,12 @@ const getDevice = (): TrackingEvent['device'] => {
 
 let fallbackSessionId: string | null = null;
 
+const isAppWrapper = (): boolean => {
+  if (typeof navigator === 'undefined') return false;
+  const ua = navigator.userAgent;
+  return /\bwv\b/.test(ua) || (ua.includes('Android') && ua.includes('Version/'));
+};
+
 const getSessionId = (): string => {
   if (typeof window === 'undefined') return 'server';
   try {
@@ -146,6 +152,10 @@ export const startSessionTracking = (): (() => void) => {
   if (typeof window === 'undefined') return () => undefined;
   if (stopSessionTracking) return stopSessionTracking;
 
+  // Label wrapper sessions so the dashboard can prove the installed APK is
+  // running current code and reaching Firebase.
+  const sessionLabel = isAppWrapper() ? 'app-webview' : 'app';
+
   let sessionStarted = true;
   try {
     sessionStarted = window.sessionStorage.getItem(SESSION_STARTED_KEY) !== '1';
@@ -154,7 +164,7 @@ export const startSessionTracking = (): (() => void) => {
     sessionStarted = true;
   }
   if (sessionStarted) {
-    trackEvent('session_start', { label: 'app' });
+    trackEvent('session_start', { label: sessionLabel });
   }
 
   let lastPulseAt = Date.now();
@@ -162,7 +172,7 @@ export const startSessionTracking = (): (() => void) => {
     const now = Date.now();
     const durationMs = Math.min(Math.max(0, now - lastPulseAt), 30_000);
     if (durationMs > 0 && document.visibilityState === 'visible') {
-      trackEvent(eventName, { label: 'app', durationMs });
+      trackEvent(eventName, { label: sessionLabel, durationMs });
     }
     lastPulseAt = now;
   };
