@@ -23,7 +23,23 @@ const DownloadPage: React.FC = () => {
     description: 'Download the current Cine-verse Android APK directly or continue with the web app.',
   });
 
-  const trackDownload = () => trackEvent('apk_download', { label: APP_RELEASE.version });
+  // The browser starts the APK download immediately on click, which can abort
+  // the async Firebase write. Hold navigation briefly so the apk_download
+  // event flushes first, then trigger the download programmatically.
+  const trackDownload = (event: React.MouseEvent<HTMLAnchorElement>): void => {
+    event.preventDefault();
+    trackEvent('apk_download', { path: '/download', label: APP_RELEASE.version });
+    const url = event.currentTarget.href;
+    window.setTimeout(() => {
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.download = APP_RELEASE.apkFileName;
+      anchor.rel = 'noopener';
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+    }, 450);
+  };
 
   return (
     <div className="pb-28">
