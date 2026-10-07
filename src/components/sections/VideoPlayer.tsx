@@ -72,6 +72,26 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
     lastMediaPulseRef.current = 0;
   }, [sourceKey]);
 
+  /**
+   * Embeds are cross-origin iframes, so real playback position is invisible.
+   * Record player-open time instead: a start event on mount, a 30s heartbeat
+   * while visible (Firebase caps durationMs at 30s), and the remainder on close.
+   */
+  useEffect(() => {
+    if (!embed || !src) return;
+    trackEvent('media_start', { label: 'embed' });
+    const startedAt = Date.now();
+    const interval = window.setInterval(() => {
+      if (document.visibilityState !== 'visible') return;
+      trackEvent('media_progress', { label: 'embed', durationMs: 30_000 });
+    }, 30_000);
+    return () => {
+      window.clearInterval(interval);
+      const elapsed = Math.max(0, Date.now() - startedAt);
+      trackEvent('media_end', { label: 'embed', durationMs: Math.min(elapsed % 30_000, 30_000) });
+    };
+  }, [embed, src]);
+
   const trackMediaPulse = useCallback(
     (eventName: 'media_progress' | 'media_end') => {
       if (embed || !mediaStartedRef.current) return;
