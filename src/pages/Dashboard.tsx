@@ -280,7 +280,9 @@ const Dashboard: React.FC = () => {
       const key = `${kind}-${id}`;
       const entry = map.get(key) || { key, kind, id, views: 0, watchMs: 0, torrents: 0 };
       if (event.name === 'page_view' || event.name === 'media_view' || event.name === 'media_start') entry.views += 1;
-      if (event.name === 'cta_click' && event.label === 'play') entry.views += 1;
+      // Any deliberate tap on a title (play, trailer, torrent, share) proves
+      // eyes on it, so a torrent-only trip can never read as zero visits.
+      if (event.name === 'cta_click') entry.views += 1;
       if (event.name === 'media_progress' || event.name === 'media_end') entry.watchMs += event.durationMs || 0;
       if (event.name === 'cta_click' && (event.label || '').startsWith('torrent')) entry.torrents += 1;
       map.set(key, entry);
