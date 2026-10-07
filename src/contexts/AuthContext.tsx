@@ -56,7 +56,10 @@ const getAuthErrorMessage = (code: string): string => {
 const shouldFallbackToRedirect = (code: string): boolean =>
   code === 'auth/popup-blocked' ||
   code === 'auth/operation-not-supported-in-this-environment' ||
-  code === 'auth/web-storage-unsupported';
+  code === 'auth/web-storage-unsupported' ||
+  // Popup-channel failures (common on mobile browsers) often succeed as a
+  // full-page redirect, which needs no popup postMessage round-trip.
+  code === 'auth/internal-error';
 
 const isMediaItem = (value: unknown): value is MediaItem => {
   if (!value || typeof value !== 'object') return false;
@@ -247,8 +250,20 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({
           : '';
       console.error('Google sign-in failed', code || error);
       if (shouldFallbackToRedirect(code)) {
-        await firebaseAuth.signInWithRedirect(auth, provider);
-        return;
+        try {
+          await firebaseAuth.signInWithRedirect(auth, provider);
+          return;
+        } catch (redirectError) {
+          const redirectCode =
+            typeof redirectError === 'object' &&
+            redirectError &&
+            'code' in redirectError
+              ? String(redirectError.code)
+              : '';
+          console.error('Google redirect sign-in failed', redirectCode || redirectError);
+          setAuthError(getAuthErrorMessage(redirectCode || code));
+          return;
+        }
       }
       setAuthError(getAuthErrorMessage(code));
     }
