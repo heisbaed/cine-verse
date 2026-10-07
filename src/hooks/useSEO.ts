@@ -3,32 +3,34 @@ import { useEffect } from 'react';
 interface SEOProps {
   title: string;
   description?: string;
+  /** Absolute image URL for link-preview cards (poster/backdrop). */
+  image?: string;
 }
 
-export function useSEO({ title, description }: SEOProps): void {
+const setMeta = (selector: string, content: string): void => {
+  const tag = document.querySelector(selector);
+  if (tag) tag.setAttribute('content', content);
+};
+
+export function useSEO({ title, description, image }: SEOProps): void {
   useEffect(() => {
-    document.title = title
+    const fullTitle = title
       ? `${title} · Cine-verse`
       : 'Cine-verse — Movies & TV Series';
+    document.title = fullTitle;
 
-    const metaDesc = document.querySelector('meta[name="description"]');
-    if (metaDesc && description) {
-      metaDesc.setAttribute('content', description);
+    if (description) {
+      setMeta('meta[name="description"]', description);
+      setMeta('meta[property="og:description"]', description);
+      setMeta('meta[name="twitter:description"]', description);
     }
-
-    const ogTitle = document.querySelector('meta[property="og:title"]');
-    if (ogTitle) {
-      ogTitle.setAttribute(
-        'content',
-        title
-          ? `${title} · Cine-verse`
-          : 'Cine-verse — Movies & TV Series',
-      );
+    setMeta('meta[property="og:title"]', fullTitle);
+    setMeta('meta[name="twitter:title"]', fullTitle);
+    setMeta('meta[property="og:url"]', window.location.href);
+    if (image) {
+      setMeta('meta[property="og:image"]', image);
+      setMeta('meta[name="twitter:image"]', image);
+      setMeta('meta[name="twitter:card"]', 'summary_large_image');
     }
-
-    const ogDesc = document.querySelector('meta[property="og:description"]');
-    if (ogDesc && description) {
-      ogDesc.setAttribute('content', description);
-    }
-  }, [title, description]);
+  }, [title, description, image]);
 }

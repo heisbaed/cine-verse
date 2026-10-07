@@ -4,6 +4,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import BottomNav from './components/layout/BottomNav';
 import Footer from './components/layout/Footer';
 import Navbar from './components/layout/Navbar';
+import UpdateBanner from './components/layout/UpdateBanner';
 import { startSessionTracking, trackPageView } from './lib/siteTracking';
 
 const Home = lazy(() => import('./pages/Home'));
@@ -70,6 +71,7 @@ const App: React.FC = () => {
           </AnimatePresence>
           {!isDashboard && <Footer />}
           {!isDashboard && <BottomNav />}
+          <UpdateBanner />
         </div>
       </div>
     </>

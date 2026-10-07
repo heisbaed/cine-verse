@@ -41,7 +41,7 @@ const MovieDetail: React.FC = () => {
   const reviews = useQuery({ queryKey: ['movieReviews', movieId], queryFn: () => getMovieReviews(movieId), enabled: movieId > 0 });
   const movie = details.data;
 
-  useSEO({ title: movie?.title || 'Movie Details', description: movie?.overview?.slice(0, 160) || '' });
+  useSEO({ title: movie?.title || 'Movie Details', description: movie?.overview?.slice(0, 160) || '', image: movie?.poster_path ? getImageUrl(movie.poster_path, 'w500') : undefined });
 
   useEffect(() => {
     if (movie) addRecentlyViewed(movie);

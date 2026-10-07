@@ -5,6 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { getMovieDetails, getTVDetails } from '@/api/tmdb';
 import { buildAnalytics, periodBounds, SURFACE_LABELS, type SurfaceFilter, type TitleMetric } from '@/lib/analytics';
 import { emptySnapshot, subscribeAnalytics } from '@/lib/liveAnalytics';
+import { HEALTH_EVENT, readTrackingHealth } from '@/lib/siteTracking';
 import type { TrackingEvent } from '@/lib/siteTracking';
 
 const ADMINS = ((import.meta.env.VITE_DASHBOARD_ADMINS as string | undefined) || 'charlesbabuu0@gmail.com').split(',').map((v) => v.trim().toLowerCase());
@@ -28,6 +29,13 @@ function exportCsv(events: Array<TrackingEvent & { surface: string }>) {
   const blob = new Blob([['timestamp,event,platform,path,label,session,device,duration_ms', ...rows.map((row) => row.map(escape).join(','))].join('\n')], { type: 'text/csv;charset=utf-8' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a'); a.href = url; a.download = `cineverse-analytics-${new Date().toISOString().slice(0, 10)}.csv`; a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+function exportJson(events: Array<TrackingEvent & { surface: string }>) {
+  const blob = new Blob([JSON.stringify({ exportedAt: new Date().toISOString(), count: events.length, events }, null, 2)], { type: 'application/json;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href = url; a.download = `cineverse-analytics-${new Date().toISOString().slice(0, 10)}.json`; a.click();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
@@ -62,6 +70,7 @@ export default function Dashboard() {
   const [clock, setClock] = useState(Date.now());
   const [revision, setRevision] = useState(0);
   const [showHeartbeats, setShowHeartbeats] = useState(false);
+  const [healthTick, setHealthTick] = useState(0);
   const now = clock + snapshot.serverOffset;
   const since = periodBounds(now, days).previousStart;
   useEffect(() => { try { localStorage.setItem('cine-verse-theme', theme); } catch { /* Theme works without storage. */ } }, [theme]);
@@ -75,7 +84,13 @@ export default function Dashboard() {
     if (!authorized) { setSnapshot(emptySnapshot()); return; }
     return subscribeAnalytics(since, setSnapshot);
   }, [authorized, user?.uid, since, revision]);
+  useEffect(() => {
+    const bump = () => setHealthTick((v) => v + 1);
+    window.addEventListener(HEALTH_EVENT, bump);
+    return () => window.removeEventListener(HEALTH_EVENT, bump);
+  }, []);
   const data = useMemo(() => buildAnalytics(snapshot.events, now, days, surface), [snapshot.events, now, days, surface]);
+  const health = useMemo(() => readTrackingHealth(), [clock, healthTick]);
   const releases = useQuery({ queryKey: ['analytics-release-downloads'], queryFn: getReleaseDownloads, enabled: authorized, refetchInterval: 5 * 60_000, staleTime: 60_000, retry: 1 });
   const feeds = Object.entries(snapshot.feeds);
   const ready = authorized && feeds.some(([, feed]) => feed.ready);
@@ -113,7 +128,7 @@ export default function Dashboard() {
       <div className="analytics-toolbar">
         <div className="analytics-filters"><label>Platform<select value={surface} onChange={(event) => setSurface(event.target.value as SurfaceFilter)}>{(['all', ...surfaces] as const).map((key) => <option key={key} value={key}>{SURFACE_LABELS[key]}</option>)}</select></label>
           <label>Period<select value={days} onChange={(event) => setDays(Number(event.target.value))}><option value={1}>Today</option><option value={7}>Last 7 days</option><option value={30}>Last 30 days</option></select></label></div>
-        <div className="analytics-actions"><button className="signal-action" onClick={() => { setRevision((v) => v + 1); void releases.refetch(); }}><RefreshCw size={14} />Reconnect</button><button className="signal-action" disabled={!ready || !data.current.length} onClick={() => exportCsv(data.current)}><FileDown size={14} />Export</button></div>
+        <div className="analytics-actions"><button className="signal-action" onClick={() => { setRevision((v) => v + 1); void releases.refetch(); }}><RefreshCw size={14} />Reconnect</button><button className="signal-action" disabled={!ready || !data.current.length} onClick={() => exportCsv(data.current)}><FileDown size={14} />Export</button><button className="signal-action" disabled={!ready || !data.current.length} onClick={() => exportJson(data.current)} title="Full-fidelity JSON backup — keep monthly, feeds cap at 50,000 events"><Download size={14} />Backup</button></div>
       </div>
       {(!snapshot.connected || partial || capped) && <div className="analytics-notice" role="status">{!ready ? 'Waiting for analytics. Values stay blank until data arrives.' : !snapshot.connected ? 'Connection interrupted. Showing the last received data; reconnection is automatic.' : partial ? 'One data source is unavailable. Totals include only the sources received.' : ''}{capped ? ' This period reached the 50,000-event limit for a source. Totals are partial; select a shorter period.' : ''}{feeds.filter(([, feed]) => feed.error).map(([name, feed]) => <div key={name}>{name}: {feed.error}</div>)}</div>}
       <section className="analytics-metrics" aria-label="Audience metrics">
@@ -155,7 +170,7 @@ export default function Dashboard() {
       </section>
       <div className="analytics-charts analytics-section">
         <section className="signal-card analytics-panel"><div className="analytics-panel-head"><div><h2>Top pages & screens</h2><p>Views only; heartbeats do not inflate these counts.</p></div><Search size={18} /></div>{data.paths.length ? data.paths.map(([path, count]) => <div className="analytics-row" key={path}><span>{path}</span><strong>{number(count)}</strong></div>) : <div className="analytics-empty">No page or screen views received.</div>}</section>
-        <section className="signal-card analytics-panel"><div className="analytics-panel-head"><div><h2>App distribution</h2><p>Downloads are separate from app usage.</p></div><Download size={18} /></div><div className="analytics-row"><span>Download button clicks <small>Selected period & platform</small></span><strong>{metric(data.downloadClicks)}</strong></div><div className="analytics-row"><span>APK downloads on GitHub <small>All releases · lifetime · refreshes every 5 minutes</small></span><strong>{releases.data === undefined ? '—' : number(releases.data)}</strong></div>{releases.isError && <p className="analytics-note">{releases.data === undefined ? 'GitHub is unavailable. Download count is unknown.' : 'Showing the last GitHub total; refresh failed.'}</p>}</section>
+        <section className="signal-card analytics-panel"><div className="analytics-panel-head"><div><h2>App distribution</h2><p>Downloads are separate from app usage.</p></div><Download size={18} /></div><div className="analytics-row"><span>Download button clicks <small>Selected period & platform</small></span><strong>{metric(data.downloadClicks)}</strong></div><div className="analytics-row"><span>First launches <small>Fresh installs + updates to a new version · selected period & platform</small></span><strong>{metric(data.firstLaunches)}</strong></div><div className="analytics-row"><span>APK downloads on GitHub <small>All releases · lifetime · refreshes every 5 minutes</small></span><strong>{releases.data === undefined ? '—' : number(releases.data)}</strong></div><div className="analytics-row"><span>Telemetry health <small>This device · {number(health.successes)} sent · {number(health.failures)} failed{health.lastSuccessAt ? ` · last sent ${ago(health.lastSuccessAt, now)}` : ''}</small></span><strong>{health.failures > 0 ? `${number(health.failures)} failed` : 'Healthy'}</strong></div>{health.lastFailureError && <p className="analytics-note">Last failure {health.lastFailureAt ? ago(health.lastFailureAt, now) : ''}: {health.lastFailureError}</p>}{releases.isError && <p className="analytics-note">{releases.data === undefined ? 'GitHub is unavailable. Download count is unknown.' : 'Showing the last GitHub total; refresh failed.'}</p>}</section>
       </div>
       <section id="events" className="signal-card analytics-panel analytics-section"><div className="analytics-panel-head"><div><h2>Live activity</h2><p>Latest 25 events for {SURFACE_LABELS[surface].toLowerCase()}.</p></div><label className="analytics-checkbox"><input type="checkbox" checked={showHeartbeats} onChange={(event) => setShowHeartbeats(event.target.checked)} />Include sessions</label></div>
         {stream.length ? <div className="analytics-table-wrap"><table><thead><tr><th>Event</th><th>Platform</th><th>Page / screen</th><th>Detail</th><th>Received</th></tr></thead><tbody>{stream.map((event) => <tr key={`${event.site}:${event.id}`}><td>{event.name.replace(/_/g, ' ')}</td><td><span className="analytics-badge">{SURFACE_LABELS[event.surface]}</span></td><td>{event.path}</td><td>{event.label || '—'}{event.durationMs ? ` · ${duration(event.durationMs)}` : ''}</td><td title={new Date(event.timestamp).toLocaleString()}>{ago(event.timestamp, now)}</td></tr>)}</tbody></table></div> : <div className="analytics-empty">{showHeartbeats ? 'No events received for this selection.' : 'No interactions yet. Enable sessions to see connections and heartbeats.'}</div>}

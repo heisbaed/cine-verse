@@ -65,6 +65,7 @@ export function buildAnalytics(raw: TrackingEvent[], now: number, days: number, 
     daysMap.set(day.toDateString(), { timestamp: day.getTime(), views: 0, sessions: new Set() });
   }
   let views = 0, activeMs = 0, playbackMs = 0, playerOpenMs = 0, opens = 0, searches = 0, downloadClicks = 0;
+  const installSessions = new Set<string>();
   let hasPlayback = false, hasPlayerOpen = false, hasDuration = false;
   for (const event of current) {
     const key = sessionKey(event);
@@ -79,6 +80,7 @@ export function buildAnalytics(raw: TrackingEvent[], now: number, days: number, 
     if (event.name === 'media_start') opens++;
     if (event.name === 'search') searches++;
     if (event.name === 'apk_download') downloadClicks++;
+    if (event.name === 'app_install') installSessions.add(key);
     const day = daysMap.get(new Date(event.timestamp).toDateString());
     day?.sessions.add(key);
     if (event.name === 'page_view') {
@@ -124,7 +126,8 @@ export function buildAnalytics(raw: TrackingEvent[], now: number, days: number, 
   }
   return {
     current, views, previousViews, sessions: sessions.size, activeNow: countActive(now, latestSession.values()),
-    activeMs, playbackMs, playerOpenMs, opens, searches, downloadClicks, hasPlayback, hasPlayerOpen, hasDuration,
+    activeMs, playbackMs, playerOpenMs, opens, searches, downloadClicks, firstLaunches: installSessions.size,
+    hasPlayback, hasPlayerOpen, hasDuration,
     averageSessionMs: sessions.size ? activeMs / sessions.size : 0,
     chart: Array.from(daysMap.values()).map((day) => ({ ...day, sessions: day.sessions.size })), pulse,
     titles: Array.from(titles.values()).sort((a, b) => b.visits - a.visits || b.opens - a.opens || b.clicks - a.clicks).slice(0, 10),

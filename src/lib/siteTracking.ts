@@ -5,6 +5,7 @@ export type TrackingSite = 'main' | 'launch';
 export type TrackingEventName =
   | 'page_view'
   | 'apk_download'
+  | 'app_install'
   | 'cta_click'
   | 'search'
   | 'media_view'
@@ -32,6 +33,7 @@ export interface TrackingEvent {
 }
 
 const EVENTS_KEY = 'cineverse-signal-events-v1';
+const HEALTH_KEY = 'cineverse-signal-health-v1';
 const SESSION_KEY = 'cineverse-signal-session-v2';
 const SESSION_STARTED_KEY = 'cineverse-signal-session-started-v2';
 const MAX_EVENTS = 2500;
@@ -75,6 +77,46 @@ const getSessionId = (): string => {
       fallbackSessionId = `mem-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
     }
     return fallbackSessionId;
+  }
+};
+
+export interface TrackingHealth {
+  successes: number;
+  failures: number;
+  lastSuccessAt: number | null;
+  lastFailureAt: number | null;
+  lastFailureError: string | null;
+}
+
+export const HEALTH_EVENT = 'cineverse:tracking-health';
+
+export const readTrackingHealth = (): TrackingHealth => {
+  const empty: TrackingHealth = {
+    successes: 0, failures: 0, lastSuccessAt: null, lastFailureAt: null, lastFailureError: null,
+  };
+  if (typeof window === 'undefined') return empty;
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(HEALTH_KEY) || 'null') as Partial<TrackingHealth> | null;
+    if (!parsed || typeof parsed !== 'object') return empty;
+    return {
+      successes: typeof parsed.successes === 'number' ? parsed.successes : 0,
+      failures: typeof parsed.failures === 'number' ? parsed.failures : 0,
+      lastSuccessAt: typeof parsed.lastSuccessAt === 'number' ? parsed.lastSuccessAt : null,
+      lastFailureAt: typeof parsed.lastFailureAt === 'number' ? parsed.lastFailureAt : null,
+      lastFailureError: typeof parsed.lastFailureError === 'string' ? parsed.lastFailureError.slice(0, 120) : null,
+    };
+  } catch {
+    return empty;
+  }
+};
+
+const writeTrackingHealth = (health: TrackingHealth): void => {
+  if (typeof window === 'undefined') return;
+  try {
+    window.localStorage.setItem(HEALTH_KEY, JSON.stringify(health));
+    window.dispatchEvent(new Event(HEALTH_EVENT));
+  } catch {
+    // Health bookkeeping must never break tracking itself.
   }
 };
 
@@ -219,8 +261,18 @@ const publishRemoteEvent = async (event: TrackingEvent): Promise<void> => {
     const database = getDatabase(firebaseApp);
     const eventRef = push(ref(database, `analytics/${event.site}/events`));
     await set(eventRef, { ...event, timestamp: serverTimestamp() });
+    const health = readTrackingHealth();
+    writeTrackingHealth({ ...health, successes: health.successes + 1, lastSuccessAt: Date.now() });
   } catch (error) {
-    console.warn('Analytics event could not be delivered', error instanceof Error ? error.message : 'Unknown error');
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    console.warn('Analytics event could not be delivered', message);
+    const health = readTrackingHealth();
+    writeTrackingHealth({
+      ...health,
+      failures: health.failures + 1,
+      lastFailureAt: Date.now(),
+      lastFailureError: message,
+    });
   }
 };
 

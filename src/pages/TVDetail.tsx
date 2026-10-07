@@ -117,6 +117,7 @@ const TVDetail: React.FC = () => {
   useSEO({
     title: details?.name || 'TV Series Details',
     description: details?.overview?.slice(0, 160) || '',
+    image: details?.poster_path ? getImageUrl(details.poster_path, 'w500') : undefined,
   });
 
   if (!tvId) {
