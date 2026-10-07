@@ -38,16 +38,18 @@ const getAuthErrorMessage = (code: string): string => {
     case 'auth/popup-blocked':
       return 'Your browser blocked the sign-in popup. Trying a full-page redirect instead...';
     case 'auth/unauthorized-domain':
-      return 'This website domain is not authorized for Google sign-in. Add it in Firebase Console > Authentication > Settings > Authorized domains.';
+      return `This website domain is not authorized for Google sign-in (${code}). Add it in Firebase Console > Authentication > Settings > Authorized domains.`;
     case 'auth/operation-not-allowed':
-      return 'Google sign-in is not enabled for this Firebase project. Enable it in Firebase Console > Authentication > Sign-in method.';
+      return `Google sign-in is not enabled for this Firebase project (${code}). Enable it in Firebase Console > Authentication > Sign-in method.`;
     case 'auth/network-request-failed':
-      return 'Network error during sign-in. Check your connection and try again.';
+      return `Network error during sign-in (${code}). Check your connection and try again.`;
     case 'auth/web-storage-unsupported':
     case 'auth/operation-not-supported-in-this-environment':
       return 'This browser cannot open a sign-in popup. Trying a full-page redirect instead...';
     default:
-      return 'Google sign-in failed. Please try again.';
+      return code
+        ? `Google sign-in failed (${code}). Please try again and report the code if it persists.`
+        : 'Google sign-in failed. Please try again.';
   }
 };
 
@@ -243,6 +245,7 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({
         typeof error === 'object' && error && 'code' in error
           ? String(error.code)
           : '';
+      console.error('Google sign-in failed', code || error);
       if (shouldFallbackToRedirect(code)) {
         await firebaseAuth.signInWithRedirect(auth, provider);
         return;
