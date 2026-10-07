@@ -61,10 +61,13 @@ npm run preview  # preview build on 0.0.0.0
 - Telemetry lives in `src/lib/siteTracking.ts` (`trackEvent`, `trackPageView`, `startSessionTracking`) → Firebase RTDB `analytics/main|launch/events`
 - Web events send `platform: 'web'`, `schemaVersion: 2`, `durationMs` clamped 0–30000, writes use `serverTimestamp()`; `/dashboard` visits are never tracked and `App.tsx` skips session tracking + navbar chrome there
 - `src/lib/liveAnalytics.ts` subscribes via `onValue` (`orderByChild('timestamp')`, `startAt`, `limitToLast(50k)`) — no polling; `src/lib/analytics.ts` classifies `surface` (`web|android|ios|native|launch|unknown`) and builds sessions/views/active-time/title metrics; missing measurements render as `—`, never 0-filled
-- Dashboard filters: Platform (`all` default — phone-browser visits are `web`, not `android`) × Period (Today / 7 / 30 days); *Download button clicks* = `apk_download` events (instant), *APK downloads on GitHub* = lifetime release-asset totals via GitHub API (5-min cache, not instant)
+- Dashboard filters: Platform (`all` default — phone-browser visits are `web`, not `android`) × Period (Today / 7 / 30 days); *Download button clicks* = `apk_download` events (instant), *APK downloads on GitHub* = lifetime release-asset totals via GitHub API (5-min cache, not instant); *First launches* = `app_install` pings (one per native version per device); *Backup* exports full-fidelity JSON — keep monthly, feeds cap at 50k events
+- Telemetry health (`cineverse-signal-health-v1` in localStorage: sent/failed counts + last error) surfaces on the dashboard's *App distribution* card as *Telemetry health (this device)*
 - Reads require admin auth (`VITE_DASHBOARD_ADMINS`, default `charlesbabuu0@gmail.com`); writes are public per `database.rules.json` (timestamp ≤ now, durationMs ≤ 30000)
 - Auth uses `authDomain: ourcineverse.web.app` in `src/lib/firebase.ts` — it must match a redirect URI registered on the project's Google OAuth client (`ourcineverse.web.app/__/auth/handler`); switching it to `cine-verse-231ad.firebaseapp.com` causes `400 redirect_uri_mismatch`. Sign-in failures surface the raw `auth/*` code in the UI; popup `internal-error` falls back to full-page redirect
 - Phone testing gotcha: site is a PWA — hard-refresh the phone browser after deploys or it runs the stale service-worker bundle
+- `registerSW` in `src/main.tsx` polls hourly + fires `cineverse:sw-update-available`; `UpdateBanner` shows a *New version available → Refresh* pill so users leave stale bundles
+- SEO: `useSEO` sets title/description + `og:*`/`twitter:*` (image = TMDB poster on detail pages); `public/sitemap.xml` + `public/robots.txt` (dashboard disallowed). JS-rendered meta is invisible to most crawlers — true per-title unfurls need SSR/Functions, not static hosting
 
 ## Deploy
 
