@@ -63,7 +63,7 @@ npm run preview  # preview build on 0.0.0.0
 - `src/lib/liveAnalytics.ts` subscribes via `onValue` (`orderByChild('timestamp')`, `startAt`, `limitToLast(50k)`) — no polling; `src/lib/analytics.ts` classifies `surface` (`web|android|ios|native|launch|unknown`) and builds sessions/views/active-time/title metrics; missing measurements render as `—`, never 0-filled
 - Dashboard filters: Platform (`all` default — phone-browser visits are `web`, not `android`) × Period (Today / 7 / 30 days); *Download button clicks* = `apk_download` events (instant), *APK downloads on GitHub* = lifetime release-asset totals via GitHub API (5-min cache, not instant)
 - Reads require admin auth (`VITE_DASHBOARD_ADMINS`, default `charlesbabuu0@gmail.com`); writes are public per `database.rules.json` (timestamp ≤ now, durationMs ≤ 30000)
-- Auth uses `authDomain: cine-verse-231ad.firebaseapp.com` in `src/lib/firebase.ts` — do NOT point it at the hosting site domain; Google sign-in breaks. Sign-in failures surface the raw `auth/*` code in the UI
+- Auth uses `authDomain: ourcineverse.web.app` in `src/lib/firebase.ts` — it must match a redirect URI registered on the project's Google OAuth client (`ourcineverse.web.app/__/auth/handler`); switching it to `cine-verse-231ad.firebaseapp.com` causes `400 redirect_uri_mismatch`. Sign-in failures surface the raw `auth/*` code in the UI; popup `internal-error` falls back to full-page redirect
 - Phone testing gotcha: site is a PWA — hard-refresh the phone browser after deploys or it runs the stale service-worker bundle
 
 ## Deploy
