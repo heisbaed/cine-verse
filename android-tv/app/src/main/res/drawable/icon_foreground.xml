@@ -1,0 +1,16 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="64"
+    android:viewportHeight="64">
+  <path android:fillColor="#080808" android:pathData="M0,0h64v64H0z"/>
+  <!-- Projector frame -->
+  <path android:strokeColor="#d6b35a" android:strokeWidth="3" android:strokeLineJoin="round" android:pathData="M14,20h36v28H14z"/>
+  <path android:strokeColor="#d6b35a" android:strokeWidth="3" android:strokeLineJoin="round" android:pathData="M14,20 l4,-8 h20 l4,8"/>
+  <!-- Play triangle -->
+  <path android:fillColor="#d6b35a" android:pathData="M23.5,31 l13,7 -13,7 z"/>
+  <!-- TV screen symbol -->
+  <path android:strokeColor="#d6b35a" android:strokeWidth="2.5" android:strokeLineCap="round" android:pathData="M28,52h8l-4,5z M28,52v-2"/>
+  <!-- T V letters as paths -->
+  <path android:fillColor="#d6b35a" android:pathData="M24,55h4v6h-4z M24,55h2v6h-2z M28,55h4v6h-4z M28,55v-2h4v-4h-4z"/>
+</vector>

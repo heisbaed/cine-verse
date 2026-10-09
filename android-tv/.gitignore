@@ -1,0 +1,11 @@
+.gradle/
+.kotlin/
+**/build/
+local.properties
+firebase-sdk.local.json
+remoteconfig.*.local.json
+*.jks
+*.keystore
+*.apk
+captures/
+.signing/

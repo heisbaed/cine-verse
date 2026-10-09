@@ -37,3 +37,4 @@ export const APP_RELEASE: AppRelease = {
 };
 
 export const hasApkUrl = (): boolean => Boolean(APP_RELEASE.apkUrl);
+

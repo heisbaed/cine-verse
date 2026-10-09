@@ -1,0 +1,34 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="200dp"
+    android:height="80dp"
+    android:viewportWidth="200"
+    android:viewportHeight="80">
+
+    <!-- Lens flare / projector beam (ignition) -->
+    <group android:name="flare">
+        <path
+            android:fillColor="#00E5FF"
+            android:pathData="M90,20 L110,20 L115,60 L85,60 Z"
+            android:fillAlpha="0" />
+    </group>
+
+    <!-- "Cine" text -->
+    <group android:name="cine_text" android:pivotX="100" android:pivotY="40">
+        <path
+            android:fillColor="#FFFFFF"
+            android:pathData="M35,20 L35,60 M35,40 L55,40 M35,60 L55,60"
+            android:strokeWidth="4"
+            android:strokeLineCap="round"
+            android:strokeLineJoin="round" />
+    </group>
+
+    <!-- "verse TV" text with cyan accent -->
+    <group android:name="verse_text" android:pivotX="100" android:pivotY="40">
+        <path
+            android:fillColor="#00E5FF"
+            android:pathData="M70,20 L70,60 M70,40 L90,40 M90,20 L90,60 M80,60 L100,60"
+            android:strokeWidth="4"
+            android:strokeLineCap="round"
+            android:strokeLineJoin="round" />
+    </group>
+</vector>

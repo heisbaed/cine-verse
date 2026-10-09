@@ -1,0 +1,6 @@
+name = "cineverse-stream-service"
+main = "src/index.ts"
+compatibility_date = "2026-10-01"
+
+[vars]
+SERVICE_VERSION = "1.0.0"
