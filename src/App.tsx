@@ -5,6 +5,7 @@ import BottomNav from './components/layout/BottomNav';
 import Footer from './components/layout/Footer';
 import Navbar from './components/layout/Navbar';
 import UpdateBanner from './components/layout/UpdateBanner';
+import AnalyticsErrorBoundary from './components/analytics/AnalyticsErrorBoundary';
 import { startSessionTracking, trackPageView } from './lib/siteTracking';
 
 const Home = lazy(() => import('./pages/Home'));
@@ -29,7 +30,7 @@ const RouteLoader: React.FC = () => (
   </div>
 );
 
-const App: React.FC = () => {
+const App: React.FC<{ prerenderedPage?: React.ReactNode }> = ({ prerenderedPage }) => {
   const location = useLocation();
   const isDashboard = location.pathname === '/dashboard';
 
@@ -53,7 +54,7 @@ const App: React.FC = () => {
               transition={{ duration: 0.22, ease: 'easeOut' }}
               className="flex-1 pb-20 md:pb-0"
             >
-              <Suspense fallback={<RouteLoader />}>
+              {prerenderedPage ?? <Suspense fallback={<RouteLoader />}>
                 <Routes location={location}>
                   <Route path="/" element={<Home />} />
                   <Route path="/explore" element={<Explore />} />
@@ -63,16 +64,16 @@ const App: React.FC = () => {
                   <Route path="/movie/:id" element={<MovieDetail />} />
                   <Route path="/tv/:id" element={<TVDetail />} />
                   <Route path="/download" element={<Download />} />
-                  <Route path="/dashboard" element={<Dashboard />} />
+                  <Route path="/dashboard" element={<AnalyticsErrorBoundary><Dashboard /></AnalyticsErrorBoundary>} />
                   <Route path="*" element={<NotFound />} />
                 </Routes>
-              </Suspense>
+              </Suspense>}
             </motion.main>
           </AnimatePresence>
-          {!isDashboard && <Footer />}
-          {!isDashboard && <BottomNav />}
-          <UpdateBanner />
-        </div>
+           {!isDashboard && <Footer />}
+           {!isDashboard && <BottomNav />}
+           <UpdateBanner />
+         </div>
       </div>
     </>
   );

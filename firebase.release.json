@@ -9,12 +9,21 @@
         "**/node_modules/**"
       ],
       "rewrites": [
+        { "source": "/explore", "destination": "/explore.html" },
+        { "source": "/upcoming", "destination": "/upcoming.html" },
+        { "source": "/global", "destination": "/global.html" },
+        { "source": "/download", "destination": "/download.html" },
+        { "source": "/watchlist", "destination": "/watchlist.html" },
+        { "source": "/dashboard", "destination": "/dashboard.html" },
+        { "source": "/movie/**", "destination": "/app.html" },
+        { "source": "/tv/**", "destination": "/app.html" }
+      ],
+      "trailingSlash": false,
+      "headers": [
         {
           "source": "**",
-          "destination": "/index.html"
-        }
-      ],
-      "headers": [
+          "headers": [{ "key": "Cache-Control", "value": "public,max-age=0,must-revalidate" }]
+        },
         {
           "source": "/assets/**",
           "headers": [
@@ -77,12 +86,21 @@
         "**/node_modules/**"
       ],
       "rewrites": [
+        { "source": "/explore", "destination": "/explore.html" },
+        { "source": "/upcoming", "destination": "/upcoming.html" },
+        { "source": "/global", "destination": "/global.html" },
+        { "source": "/download", "destination": "/download.html" },
+        { "source": "/watchlist", "destination": "/watchlist.html" },
+        { "source": "/dashboard", "destination": "/dashboard.html" },
+        { "source": "/movie/**", "destination": "/app.html" },
+        { "source": "/tv/**", "destination": "/app.html" }
+      ],
+      "trailingSlash": false,
+      "headers": [
         {
           "source": "**",
-          "destination": "/index.html"
-        }
-      ],
-      "headers": [
+          "headers": [{ "key": "Cache-Control", "value": "public,max-age=0,must-revalidate" }]
+        },
         {
           "source": "/assets/**",
           "headers": [
