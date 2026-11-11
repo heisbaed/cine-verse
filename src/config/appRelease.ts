@@ -36,5 +36,31 @@ export const APP_RELEASE: AppRelease = {
   ],
 };
 
+export interface TvAppRelease {
+  version: string;
+  fileSize: string;
+  minAndroid: string;
+  updatedAt: string;
+  apkUrl: string;
+  apkFileName: string;
+  changelog: string[];
+}
+
+export const TV_APP_RELEASE: TvAppRelease = {
+  version: '1.0.0',
+  fileSize: '~31 MB',
+  minAndroid: 'Android TV 5.0+ (API 21)',
+  updatedAt: 'November 2026',
+  apkUrl:
+    'https://github.com/heisbaed/cineverseTV/releases/download/v1.0.0/cineverse-tv-1.0.0-release.apk?download=1&v=1.0.0',
+  apkFileName: 'cineverse-tv-1.0.0-release.apk',
+  changelog: [
+    'Cineverse TV rebrand — gold clapperboard icon, banner and splash on black',
+    'Leanback Android TV launcher experience, built for the remote',
+    'Profiles, resume watching, parental PIN and multiple stream providers',
+    'About and support point to King Bae and ourcineverse.web.app',
+  ],
+};
+
 export const hasApkUrl = (): boolean => Boolean(APP_RELEASE.apkUrl);
 
