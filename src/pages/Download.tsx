@@ -5,12 +5,6 @@ import { APP_RELEASE, TV_APP_RELEASE } from '@/config/appRelease';
 import { useSEO } from '@/hooks/useSEO';
 import { trackEvent } from '@/lib/siteTracking';
 
-const screenshots = [
-  { src: '/screenshots/app-home.jpg', alt: 'Cine-verse Android app home screen with trending movies', caption: 'Home' },
-  { src: '/screenshots/app-featured.jpg', alt: 'Cine-verse Android app featured premiere screen', caption: 'Featured premiere' },
-  { src: '/screenshots/app-detail.jpg', alt: 'Cine-verse Android app movie details screen', caption: 'Movie details' },
-];
-
 const DownloadPage: React.FC = () => {
   useSEO({
     title: 'Download Cine-verse apps',
@@ -70,7 +64,7 @@ const DownloadPage: React.FC = () => {
               >
                 <Download size={15} aria-hidden="true" /> Download phone APK
               </a>
-              <a href="https://github.com/heisbaed/cine-verse/releases/tag/v1.2.3" target="_blank" rel="noopener noreferrer" className="mt-3 inline-flex min-h-8 items-center justify-center gap-1 text-[9px] font-bold uppercase tracking-wider text-white/45 transition-colors hover:text-gold sm:text-[10px]">
+              <a href="https://github.com/heisbaed/cine-verse/releases/tag/v1.2.5" target="_blank" rel="noopener noreferrer" className="mt-3 inline-flex min-h-8 items-center justify-center gap-1 text-[9px] font-bold uppercase tracking-wider text-white/45 transition-colors hover:text-gold sm:text-[10px]">
                 Phone release details <ExternalLink size={12} aria-hidden="true" />
               </a>
             </article>
@@ -138,17 +132,9 @@ const DownloadPage: React.FC = () => {
             ))}
           </ul>
           <div className="mt-6 border-t border-white/10 pt-5">
-            <h3 className="font-bold">See the phone app</h3>
-            <div className="mt-4 grid grid-cols-3 gap-3" aria-label="Cine-verse Android app screenshots">
-              {screenshots.map((shot) => (
-                <figure key={shot.src}>
-                  <div className="media-on-dark overflow-hidden rounded-xl border border-white/15 bg-black p-1.5 sm:rounded-2xl sm:p-2">
-                    <img src={shot.src} alt={shot.alt} loading="lazy" className="aspect-[9/16] w-full rounded-lg object-cover object-top sm:rounded-xl" />
-                  </div>
-                  <figcaption className="mt-2 text-center text-[8px] font-black uppercase tracking-[0.16em] text-white/40 sm:text-[9px]">{shot.caption}</figcaption>
-                </figure>
-              ))}
-            </div>
+            <h3 className="font-bold">Already have Cineverse?</h3>
+            <p className="mt-2 text-sm leading-6 text-white/55">Open the app, choose Update when prompted, and confirm the Android installer. Your account and saved data stay in place. No uninstall needed.</p>
+            <p className="mt-2 text-xs leading-5 text-white/40">The new native player needs this one-time app upgrade. Compatible future interface and logic updates download automatically and apply on launch or restart.</p>
           </div>
           <div className="mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-white/10 pt-5 text-xs text-white/40">
             <span>Updated {APP_RELEASE.updatedAt}</span>

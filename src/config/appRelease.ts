@@ -16,23 +16,23 @@ export interface AppRelease {
 // new browser_download_url here (and update version/fileSize).
 
 export const APP_RELEASE: AppRelease = {
-  version: '1.2.3',
-  buildNumber: '8',
-  fileSize: '~45 MB',
-  minAndroid: 'Android 8.0+',
-  updatedAt: 'October 2026',
+  version: '1.2.5',
+  buildNumber: '10',
+  fileSize: '23.9 MB',
+  minAndroid: 'Android 7.0+ · 64-bit ARM',
+  updatedAt: '14 November 2026',
   apkUrl:
-    'https://github.com/heisbaed/cine-verse/releases/download/v1.2.3/cine-verse-v1.2.3.apk',
-  apkFileName: 'cine-verse-v1.2.3.apk',
+    'https://github.com/heisbaed/cine-verse/releases/download/v1.2.5/cine-verse-v1.2.5.apk',
+  apkFileName: 'cine-verse-v1.2.5.apk',
   changelog: [
-    'Update loops fixed — downloads and patches now recover and apply reliably',
-    'Cine AI answers grounded in live results, including franchises and stories',
-    'Torrent downloads search two indexes with quality filters, sorting, and pages',
-    'Minimalist torrent UI with tap-to-select dropdowns and magnet-first actions',
-    'Working picture-in-picture — shrink any video into a floating window',
-    'Follow shows and get notified when new episodes air',
-    'App lock — fingerprint or PIN on every launch (optional)',
-    'Cinema stats — time watched, top genres, most-watched title',
+    'Native full-screen player with quality, audio, captions and speed controls',
+    'Direct downloads with quality selection, including 1080p when available',
+    'Size checks run without blocking the Download button',
+    'Background downloads with pause, resume and progress notifications',
+    'Offline playback with saved subtitles when available',
+    'Redesigned Downloads tab, pink styling and sharper splash artwork',
+    'Library in Settings, with your account and Cine AI preserved',
+    'Resolver crash fixes and compatible automatic OTA patches',
   ],
 };
 
