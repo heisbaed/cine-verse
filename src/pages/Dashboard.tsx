@@ -204,7 +204,7 @@ export default function Dashboard() {
           <div className="analytics-row"><span>First version launches <small>Fresh installs + upgrades · selected period & platform</small></span><strong>{metric(data.firstLaunches)}</strong></div>
           {data.versions.map((entry) => <div className="analytics-row" key={entry.version}><span>v{entry.version}<small>First launches reported in this period</small></span><strong>{metric(entry.launches)}</strong></div>)}
           {releases.map((release, index) => <div key={RELEASE_REPOSITORIES[index].repository} className="analytics-row"><span>{RELEASE_REPOSITORIES[index].label}<small>{release.data?.latest ? `${release.data.latest.version} · ${number(release.data.latest.downloads)} transfers` : 'Latest release unavailable'} · lifetime APK transfers{release.isError ? ' · refresh unavailable' : ''}</small></span><strong>{release.data === undefined ? '—' : number(release.data.total)}</strong></div>)}
-          <p className="analytics-note">Separate GitHub assets are counted separately, including mirrors and repeat downloads. Refreshed every 5 minutes.</p>
+          <p className="analytics-note">Public APK transfers include repeat downloads. Private source-repository counts are excluded. Refreshed every 5 minutes.</p>
           <div className="analytics-row"><span>Telemetry health <small>This browser only · {number(health.successes)} sent · {number(health.failures)} failed</small></span><strong>{health.failures ? `${number(health.failures)} failed` : health.successes ? 'Healthy' : 'No attempts'}</strong></div>
           {health.lastFailureError && <p className="analytics-note">Last failure: {health.lastFailureError}</p>}
         </section>

@@ -7,7 +7,6 @@ export interface ReleaseDownloads {
 
 export const RELEASE_REPOSITORIES = [
   { repository: 'heisbaed/cine-verse', label: 'Phone · website downloads', kind: 'mobile' },
-  { repository: 'heisbaed/cine-verse-mobile', label: 'Phone · source releases', kind: 'mobile' },
   { repository: 'heisbaed/cineverseTV', label: 'Android TV', kind: 'tv' },
 ] as const;
 
