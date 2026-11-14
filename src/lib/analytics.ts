@@ -1,9 +1,9 @@
 import type { TrackingEvent } from './siteTracking';
 
-export type Surface = 'web' | 'android' | 'ios' | 'native' | 'launch' | 'unknown';
+export type Surface = 'web' | 'android' | 'android-tv' | 'ios' | 'native' | 'launch' | 'unknown';
 export type SurfaceFilter = 'all' | Surface;
 export const SURFACE_LABELS: Record<SurfaceFilter, string> = {
-  all: 'All platforms', web: 'Website', android: 'Android app', ios: 'iOS app',
+  all: 'All platforms', web: 'Website', android: 'Android app', 'android-tv': 'Android TV', ios: 'iOS app',
   native: 'Older app', launch: 'Launch page', unknown: 'Unclassified',
 };
 export const ACTIVE_WINDOW_MS = 90_000;
@@ -37,7 +37,7 @@ export function periodBounds(now: number, days: number) {
 
 export interface TitleMetric {
   key: string; kind: 'movie' | 'tv'; id: number; visits: number; opens: number;
-  clicks: number; torrents: number; playbackMs: number; playerOpenMs: number;
+  clicks: number; torrents: number; downloads: number; playbackMs: number; playerOpenMs: number;
 }
 
 export function buildAnalytics(raw: TrackingEvent[], now: number, days: number, surface: SurfaceFilter) {
@@ -66,13 +66,15 @@ export function buildAnalytics(raw: TrackingEvent[], now: number, days: number, 
   }
   let views = 0, activeMs = 0, playbackMs = 0, playerOpenMs = 0, opens = 0, searches = 0, downloadClicks = 0;
   const installSessions = new Set<string>();
+  const versions = new Map<string, Set<string>>();
+  const downloads = { queued: 0, complete: 0, failed: 0, paused: 0, resumed: 0, cancelled: 0 };
   let hasPlayback = false, hasPlayerOpen = false, hasDuration = false;
   for (const event of current) {
     const key = sessionKey(event);
     sessions.add(key);
     if (event.name.startsWith('session_')) latestSession.set(key, event);
     const duration = Math.min(30_000, Math.max(0, event.durationMs || 0));
-    if (event.name === 'session_heartbeat' || event.name === 'session_end') { activeMs += duration; hasDuration = true; }
+    if ((event.name === 'session_heartbeat' || event.name === 'session_end') && typeof event.durationMs === 'number') { activeMs += duration; hasDuration = true; }
     if (event.name === 'media_progress' || event.name === 'media_end') {
       if (event.label === 'native' || event.label === 'playback') { playbackMs += duration; hasPlayback = true; }
       if (event.label === 'embed') { playerOpenMs += duration; hasPlayerOpen = true; }
@@ -80,7 +82,16 @@ export function buildAnalytics(raw: TrackingEvent[], now: number, days: number, 
     if (event.name === 'media_start') opens++;
     if (event.name === 'search') searches++;
     if (event.name === 'apk_download') downloadClicks++;
-    if (event.name === 'app_install') installSessions.add(key);
+    if (event.name === 'app_install') {
+      const version = event.label && /^\d+\.\d+\.\d+$/.test(event.label) ? event.label : 'Unknown';
+      installSessions.add(`${key}:${version}`);
+      const launches = versions.get(version) || new Set<string>();
+      launches.add(key); versions.set(version, launches);
+    }
+    if (event.name === 'cta_click' && event.label?.startsWith('download-')) {
+      const action = event.label.slice(9) as keyof typeof downloads;
+      if (Object.prototype.hasOwnProperty.call(downloads, action)) downloads[action]++;
+    }
     const day = daysMap.get(new Date(event.timestamp).toDateString());
     day?.sessions.add(key);
     if (event.name === 'page_view') {
@@ -93,10 +104,10 @@ export function buildAnalytics(raw: TrackingEvent[], now: number, days: number, 
     const match = event.path.match(/^\/(movie|tv)\/(\d+)(?:\/|$)/);
     if (match) {
       const titleKey = `${match[1]}-${match[2]}`;
-      const title = titles.get(titleKey) || { key: titleKey, kind: match[1] as 'movie' | 'tv', id: Number(match[2]), visits: 0, opens: 0, clicks: 0, torrents: 0, playbackMs: 0, playerOpenMs: 0 };
+      const title = titles.get(titleKey) || { key: titleKey, kind: match[1] as 'movie' | 'tv', id: Number(match[2]), visits: 0, opens: 0, clicks: 0, torrents: 0, downloads: 0, playbackMs: 0, playerOpenMs: 0 };
       if (event.name === 'page_view') title.visits++;
       if (event.name === 'media_start') title.opens++;
-      if (event.name === 'cta_click') { title.clicks++; if (event.label?.startsWith('torrent')) title.torrents++; }
+      if (event.name === 'cta_click') { title.clicks++; if (event.label?.startsWith('torrent')) title.torrents++; if (event.label === 'download-queued') title.downloads++; }
       if (event.name === 'media_progress' || event.name === 'media_end') {
         if (event.label === 'native' || event.label === 'playback') title.playbackMs += duration;
         if (event.label === 'embed') title.playerOpenMs += duration;
@@ -127,7 +138,8 @@ export function buildAnalytics(raw: TrackingEvent[], now: number, days: number, 
   return {
     current, views, previousViews, sessions: sessions.size, activeNow: countActive(now, latestSession.values()),
     activeMs, playbackMs, playerOpenMs, opens, searches, downloadClicks, firstLaunches: installSessions.size,
-    hasPlayback, hasPlayerOpen, hasDuration,
+    hasPlayback, hasPlayerOpen, hasDuration, downloads,
+    versions: Array.from(versions, ([version, launches]) => ({ version, launches: launches.size })),
     averageSessionMs: sessions.size ? activeMs / sessions.size : 0,
     chart: Array.from(daysMap.values()).map((day) => ({ ...day, sessions: day.sessions.size })), pulse,
     titles: Array.from(titles.values()).sort((a, b) => b.visits - a.visits || b.opens - a.opens || b.clicks - a.clicks).slice(0, 10),

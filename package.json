@@ -5,7 +5,9 @@
   "type": "module",
   "scripts": {
     "dev": "vite --host 0.0.0.0",
-    "build": "vite build",
+    "build": "node scripts/build.mjs",
+    "check:seo": "node scripts/check-seo.mjs",
+    "check:seo:browser": "node scripts/check-seo-browser.mjs",
     "preview": "vite preview --host 0.0.0.0",
     "deploy:staging": "npm run build && firebase deploy --only hosting:mainsite --project cine-verse-231ad --non-interactive",
     "deploy:launch": "firebase deploy --only hosting:alternate --project cine-verse-231ad --non-interactive",

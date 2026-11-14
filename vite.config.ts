@@ -3,12 +3,13 @@ import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
 import path from 'path';
 
-export default defineConfig({
+export default defineConfig(({ isSsrBuild }) => ({
   plugins: [
     react(),
     VitePWA({
+      disable: isSsrBuild,
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.svg', 'og-image.svg'],
+      includeAssets: ['favicon.svg', 'og-image.png'],
       manifest: {
         name: 'Cine-verse',
         short_name: 'Cine-verse',
@@ -31,9 +32,12 @@ export default defineConfig({
       },
       workbox: {
         cleanupOutdatedCaches: true,
-        navigateFallback: '/index.html',
+        navigateFallback: '/app.html',
         navigateFallbackDenylist: [/^\/__\//],
         globPatterns: ['**/*.{js,css,html,svg}'],
+        // Firebase returns HTTP 404 for this file, so precaching it would
+        // reject the entire service-worker installation.
+        globIgnores: ['**/404.html', 'movie/**/*.html', 'tv/**/*.html'],
         runtimeCaching: [
           {
             urlPattern: /^https:\/\/api\.themoviedb\.org\/3\//,
@@ -93,4 +97,4 @@ export default defineConfig({
   server: {
     host: '0.0.0.0',
   },
-});
+}));

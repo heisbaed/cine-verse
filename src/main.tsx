@@ -1,7 +1,7 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { hydrate, QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { registerSW } from 'virtual:pwa-register';
 import App from './App';
 import { AuthProvider } from './contexts/AuthContext';
@@ -17,6 +17,16 @@ const queryClient = new QueryClient({
     },
   },
 });
+
+const queryState = document.getElementById('cineverse-query-state');
+if (queryState?.textContent) {
+  try {
+    hydrate(queryClient, JSON.parse(queryState.textContent));
+  } catch {
+    // A stale or incomplete snapshot can still load the catalog normally.
+  }
+  queryState.remove();
+}
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>

@@ -14,7 +14,16 @@ export type TrackingEventName =
   | 'session_end'
   | 'media_start'
   | 'media_progress'
-  | 'media_end';
+  | 'media_end'
+  | 'cine_mate_open'
+  | 'cine_mate_close'
+  | 'cine_mate_message'
+  | 'cine_mate_command'
+  | 'cine_mate_dance'
+  | 'cine_mate_sing'
+  | 'cine_mate_poke'
+  | 'cine_mate_greeting'
+  | 'cine_mate_view_title';
 
 export interface TrackingEvent {
   id: string;
@@ -28,7 +37,7 @@ export interface TrackingEvent {
   referrer?: string;
   durationMs?: number;
   mediaPositionMs?: number;
-  platform?: 'web' | 'android' | 'ios';
+  platform?: 'web' | 'android' | 'android-tv' | 'ios';
   schemaVersion?: number;
 }
 
@@ -346,4 +355,11 @@ export const clearTrackingEvents = (): void => {
     // Storage may be unavailable in some app wrappers.
   }
   window.dispatchEvent(new Event('cineverse:tracking-updated'));
+};
+
+// ---------- CineMate companionship telemetry ----------
+export const trackCineMate = (name: 'open' | 'close' | 'message' | 'command' | 'dance' | 'sing' | 'poke' | 'greeting', details?: { label?: string }): void => {
+  if (typeof window === 'undefined') return;
+  const path = (details?.label || window.location.pathname).split(/[?#]/)[0].slice(0, 240);
+  trackEvent('cine_mate_' + name, { path, label: details?.label });
 };

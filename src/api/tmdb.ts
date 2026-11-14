@@ -21,11 +21,35 @@ const IMG_BASE_URL = 'https://image.tmdb.org/t/p';
 
 const tmdbApi = axios.create({
   baseURL: BASE_URL,
+  timeout: import.meta.env.SSR ? 15000 : 0,
   params: {
     api_key: API_KEY,
     language: 'en-US',
   },
 });
+
+// Shared-key throttling: 20-50 concurrent users burst past TMDB's rate
+// limit (~40 req/10s per key). Retry 429/5xx with backoff honoring
+// Retry-After; fail fast on 401 (invalid key — retrying is pointless).
+tmdbApi.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    const config = error.config as { __retryCount?: number } & Record<string, unknown>;
+    const status = error.response?.status as number | undefined;
+    if (status === 401) return Promise.reject(error);
+    const retryable =
+      status === 429 || !status || (status >= 500 && status < 600);
+    if (!retryable || !config) return Promise.reject(error);
+    config.__retryCount = (config.__retryCount || 0) + 1;
+    if (config.__retryCount > 3) return Promise.reject(error);
+    const retryAfter = Number(error.response?.headers?.['retry-after']);
+    const delayMs = Number.isFinite(retryAfter) && retryAfter > 0
+      ? Math.min(retryAfter * 1000, 10000)
+      : Math.min(1000 * 2 ** (config.__retryCount - 1), 8000);
+    await new Promise((resolve) => globalThis.setTimeout(resolve, delayMs));
+    return tmdbApi.request(config as never);
+  },
+);
 
 export const getImageUrl = (
   path: string | null,
@@ -126,6 +150,11 @@ export const getMovieReviews = async (
 
 export const getTVDetails = async (tvId: number): Promise<TVDetails> => {
   const response = await tmdbApi.get(`/tv/${tvId}`);
+  return response.data;
+};
+
+export const getTVExternalIds = async (tvId: number): Promise<ExternalIds> => {
+  const response = await tmdbApi.get(`/tv/${tvId}/external_ids`);
   return response.data;
 };
 
