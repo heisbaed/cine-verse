@@ -11,3 +11,9 @@
 - Deployment and live crawler verification in progress.
 
 - Live GitHub checks found cine-verse-mobile is private (unauthenticated API 404). Removed its permanently unavailable public counter. Dashboard reports only public mobile and TV distribution; private source-release transfers are explicitly excluded. Public API check returned mobile lifetime 454/latest 12 and TV lifetime/latest 12 at verification time.
+
+## Live verification
+- Firebase hosting:mainsite deployment completed, including private-repository count exclusion. Commits 805dc77 and e9b2d87 pushed.
+- Crawler requests to /download return the PNG brand image. /movie/1368337 returns The Odyssey metadata and its TMDB artwork, and /tv/84773 returns The Rings of Power metadata and its TMDB artwork. All returned HTTP 200 before JavaScript execution; /og-image.png returned image/png, 262155 bytes.
+- Production dashboard still requires admin sign-in even with the development smoke parameter. No admin bypass shipped. Browser checks of populated/empty admin content used local representative fixtures, not a claim of production-authenticated verification.
+- All 81 generated preview images returned successful image responses. Live browser verified a generated movie URL still renders its real detail page. No runtime exceptions in these checks.
