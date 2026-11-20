@@ -8,6 +8,7 @@ import { useQuery } from '@tanstack/react-query';
 import {
   Calendar,
   Clock,
+  Download,
   Globe,
   Layers3,
   Play,
@@ -547,15 +548,21 @@ const TVDetail: React.FC = () => {
                   ) : null}
 
                   {!playerOpen && (
-                    <button
-                      disabled={upcoming}
-                      onClick={() => setPlayerOpen(true)}
-                      className="mb-5 inline-flex items-center gap-3 rounded-full bg-gold px-7 py-3 text-xs font-black uppercase tracking-[0.12em] text-black hover:bg-white"
-                    >
-                      <Play size={17} fill="currentColor" aria-hidden="true" /> {upcoming ? releaseLabel(selectedAirDate!) : 'Play episode'}
-                    </button>
+                    upcoming ? <p className="my-4 text-sm font-semibold text-gold">{releaseLabel(selectedAirDate!)}</p> :
+                      <div className="mb-5 flex flex-wrap items-center gap-2">
+                        <button type="button" onClick={() => setPlayerOpen(true)}
+                          className="inline-flex min-h-11 items-center gap-2 rounded-full bg-gold px-5 text-sm font-bold text-black hover:bg-white">
+                          <Play size={17} fill="currentColor" aria-hidden="true" /> Play episode
+                        </button>
+                        <button type="button" onClick={() => setShowDownload(true)}
+                          className="inline-flex min-h-11 items-center gap-2 rounded-full border border-white/20 px-4 text-sm font-semibold hover:border-gold/50">
+                          <Download size={17} aria-hidden="true" /> Download
+                        </button>
+                      </div>
                   )}
-                  <button className="mb-3 rounded-full border border-white/20 px-5 py-2 text-sm font-bold" disabled={upcoming} onClick={() => setShowDownload(true)}>{upcoming ? releaseLabel(selectedAirDate!) : 'Download episode'}</button><DownloadModal isOpen={showDownload} onClose={() => setShowDownload(false)} request={playbackRequest} title={details.name} sources={sourcesQuery.data || []} loading={sourcesQuery.isFetching} error={sourcesQuery.error?.message} onRetry={() => void sourcesQuery.refetch()} />
+                  <DownloadModal isOpen={showDownload} onClose={() => setShowDownload(false)} request={playbackRequest}
+                    title={`${details.name} · S${selectedSeason} E${selectedEpisode}`} sources={sourcesQuery.data || []}
+                    loading={sourcesQuery.isFetching} error={sourcesQuery.error?.message} onRetry={() => void sourcesQuery.refetch()} />
                   {playerOpen && (
                     <VideoPlayer
                       mediaKey={`tv-${tvId}-${selectedSeason}-${selectedEpisode}`}

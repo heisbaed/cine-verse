@@ -110,10 +110,11 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   const [audioTracks, setAudioTracks] = useState<{ index: number; name: string }[]>([]);
   const [audioIndex, setAudioIndex] = useState(-1);
   const [embeddedSubs, setEmbeddedSubs] = useState<{ index: number; name: string }[]>([]);
-  const [embeddedSubIndex, setEmbeddedSubIndex] = useState(-1);
   const [nativeSubs, setNativeSubs] = useState<TextTrack[]>([]);
   const [speed, setSpeed] = useState(1);
-  const [subtitleIndex, setSubtitleIndex] = useState(-1);
+  const [captionChoice, setCaptionChoice] = useState<{
+    label: string; type: 'file' | 'stream' | 'local'; url?: string; streamIndex?: number;
+  } | null>(null);
   const [nextCountdown, setNextCountdown] = useState<number | null>(null);
 
   useEffect(() => setMounted(true), []);
@@ -154,6 +155,17 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
     ...(activeSource?.subtitles ?? []),
     ...(localCaption?.key === sourceKey ? [localCaption] : []),
   ];
+
+  const sameCaption = (label: string) => label.trim().toLowerCase() === captionChoice?.label.trim().toLowerCase();
+  const exactFile = captionTracks.findIndex((track) => track.url === captionChoice?.url);
+  const preferredFile = captionChoice?.type === 'local' || exactFile >= 0
+    ? exactFile : captionTracks.findIndex((track) => sameCaption(track.label));
+  const exactStream = captionChoice?.type === 'stream' && activeSource?.url === captionChoice.url
+    ? streamCaptions.find((track) => track.index === captionChoice.streamIndex && sameCaption(track.name)) : undefined;
+  const preferredStream = captionChoice?.type === 'local' ? -1
+    : (exactStream ?? streamCaptions.find((track) => sameCaption(track.name)))?.index ?? -1;
+  const embeddedSubIndex = captionChoice?.type === 'stream' || preferredFile < 0 ? preferredStream : -1;
+  const subtitleIndex = embeddedSubIndex < 0 ? preferredFile : -1;
 
   useEffect(() => {
     const current = normalizedSources[activeIndex];
@@ -197,7 +209,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
     setBuffered(0);
     setBuffering(true);
     setPlaying(false);
-    setSubtitleIndex(-1);
+    setCaptionChoice(null);
     setSettingsOpen(false);
     setCaptionsOpen(false);
     setLocalCaption(null);
@@ -248,8 +260,6 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
     setAudioIndex(-1);
     setEmbeddedSubs([]);
     setNativeSubs([]);
-    setEmbeddedSubIndex(-1);
-    setSubtitleIndex(-1);
     setCaptionError('');
 
     const restorePosition = () => {
@@ -348,14 +358,16 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
     if (!video) return;
     let stallTimer: ReturnType<typeof setTimeout> | undefined;
     let lastPosition = video.currentTime;
+    let lastWait = 0;
+    let waits = 0;
     const clearStall = () => { clearTimeout(stallTimer); stallTimer = undefined; };
-    const watchForStall = () => {
+    const watchForStall = (delay = 15_000) => {
       if (stallTimer || !activeSource || activeSource.offline) return;
       stallTimer = setTimeout(() => {
         stallTimer = undefined;
         if (video.ended || (video.paused && video.readyState >= 2)) return;
         markFailed(activeSource.url);
-      }, 15_000);
+      }, delay);
     };
     watchForStall();
     const onTimeUpdate = () => {
@@ -390,7 +402,10 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
     const onWaiting = () => {
       if (video.paused) return;
       setBuffering(true);
-      watchForStall();
+      const now = Date.now();
+      waits = now - lastWait < 25_000 ? waits + 1 : 1;
+      lastWait = now;
+      watchForStall(waits >= 3 && !video.seeking ? 8_000 : 15_000);
     };
     const onCanPlay = () => { clearStall(); setBuffering(false); };
     const onSeeking = () => { lastPosition = -1; clearStall(); if (!video.paused) watchForStall(); };
@@ -475,8 +490,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
       if (!vtt.includes('-->')) throw new Error('Choose a valid .srt or .vtt file.');
       const url = URL.createObjectURL(new Blob([vtt], { type: 'text/vtt' }));
       setLocalCaption({ url, label: file.name, key: sourceKey });
-      setEmbeddedSubIndex(-1);
-      setSubtitleIndex(activeSource?.subtitles.length ?? 0);
+      setCaptionChoice({ label: file.name, type: 'local', url });
       setCaptionError('');
     } catch (error) {
       setCaptionError(error instanceof Error ? error.message : 'Could not open the subtitle file.');
@@ -596,10 +610,13 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
-        if (settingsOpen) setSettingsOpen(false);
+        if (captionsOpen) setCaptionsOpen(false);
+        else if (settingsOpen) setSettingsOpen(false);
         else onClose?.();
         return;
       }
+      if (event.target instanceof HTMLElement &&
+        event.target.closest('button, input, select, textarea, a, [contenteditable]')) return;
       if (event.key === ' ') {
         event.preventDefault();
         togglePlay();
@@ -611,7 +628,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [armControls, onClose, seekBy, settingsOpen, toggleFullscreen, toggleMute, togglePlay]);
+  }, [armControls, captionsOpen, onClose, seekBy, settingsOpen, toggleFullscreen, toggleMute, togglePlay]);
 
   const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
   const bufferedProgress = duration > 0 ? (buffered / duration) * 100 : 0;
@@ -767,8 +784,11 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
                       value={embeddedSubIndex >= 0 ? `stream:${embeddedSubIndex}` : subtitleIndex >= 0 ? `file:${subtitleIndex}` : 'off'}
                       onChange={(event) => {
                         const [kind, index] = event.target.value.split(':');
-                        setEmbeddedSubIndex(kind === 'stream' ? Number(index) : -1);
-                        setSubtitleIndex(kind === 'file' ? Number(index) : -1);
+                        const stream = streamCaptions.find((track) => track.index === Number(index));
+                        const file = captionTracks[Number(index)];
+                        if (kind === 'stream' && stream) setCaptionChoice({ label: stream.name, type: 'stream', url: activeSource?.url, streamIndex: stream.index });
+                        else if (kind === 'file' && file) setCaptionChoice({ label: file.label, type: file.url === localCaption?.url ? 'local' : 'file', url: file.url });
+                        else setCaptionChoice(null);
                         setCaptionError('');
                       }}>
                       <option value="off">Off</option>
@@ -776,6 +796,8 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
                       {captionTracks.map((track, index) => <option key={track.url} value={`file:${index}`}>{track.label}</option>)}
                     </select>
                     {!streamCaptions.length && !captionTracks.length && <p className="mt-2 text-xs text-white/60">No subtitles supplied by this source.</p>}
+                    {captionChoice && subtitleIndex < 0 && embeddedSubIndex < 0 && (streamCaptions.length > 0 || captionTracks.length > 0) &&
+                      <p className="mt-2 text-xs text-white/60">The selected track is unavailable on this source.</p>}
                     {captionError && <p role="status" className="mt-2 text-xs text-ruby">{captionError}</p>}
                     <label className="mt-3 inline-flex cursor-pointer rounded-lg border border-white/15 px-3 py-2 text-xs font-semibold text-gold focus-within:outline-2">
                       Add .srt or .vtt

@@ -102,3 +102,11 @@ Updated the local web Worker Vidnest v2 public-transport decoding value to match
 - Browser HLS starts with a conservative bandwidth estimate and adapts to the screen and connection. A prolonged stall tries the next source and keeps the playback position. Newly returned sources can play before all providers finish. Playback smoothness still depends on the provider and connection.
 - The production build completed with the 1.2.9 APK link. GitHub confirmed public asset cine-verse-v1.2.9.apk (24,252,345 bytes). No browser/device playback tests were run per request.
 - Firebase hosting:mainsite deployed successfully. The live Explore HTML includes the genres, South Africa and Nollywood chips. The live Download page targets the public 1.2.9 APK. The GitHub asset SHA-256 matches the installed Expo APK (a7aa0ad8bdd2d374a3ebf6020ea224c36dc85c3dcfb639138e97785d956da510). Playback, captions and background downloads remain for user verification.
+
+## 21 November follow-up
+- Pushed the previously shipped website and playback worker baseline (83883a5).
+- Consolidated the movie hero and series episode controls around Play and Download. Grouped the web Downloads library into compact rows, with playback starting only on demand. Explore keeps the genre and region choices visible and folds year, rating and sorting into Filters.
+- Download quality probes now run once per source per dialog. Choices arrive independently and preserve the selected file. The player keeps matching subtitle choices when changing sources and tries an alternative sooner after repeated buffering.
+- Checked the latest RTDB entries using authenticated Firebase CLI reads without printing event contents. The main feed had a recent event. The last launch feed event was from 16 October UTC, so the default seven-day view has no launch feed activity.
+- Dashboard keeps the last results in memory while reconnecting for the same admin. If the realtime feed stalls, it attempts a Firebase HTTPS read with the signed-in Firebase account and refreshes every minute while realtime is unavailable. The dashboard shows which mode it is using without exposing private logs or changing database access rules.
+- Production build passed. This pass did not run playback or authenticated browser feature tests.

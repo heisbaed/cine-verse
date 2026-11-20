@@ -1,7 +1,7 @@
 import DownloadModal from '@/components/sections/DownloadModal';
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { ExternalLink, Play, Share2, Star, User } from 'lucide-react';
+import { Download, ExternalLink, Play, Share2, Star, User } from 'lucide-react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import {
   getImageUrl,
@@ -25,7 +25,6 @@ const MovieDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const [searchParams] = useSearchParams();
   const movieId = Number(id);
-  const mediaRef = useRef<HTMLElement>(null);
   const [trailerOpen, setTrailerOpen] = useState(false);
   const [showDownload, setShowDownload] = useState(false);
   const [showPlayer, setShowPlayer] = useState(searchParams.get('play') === '1');
@@ -48,10 +47,10 @@ const MovieDetail: React.FC = () => {
   }, [movie, addRecentlyViewed]);
 
   useEffect(() => {
-    if (!movie || searchParams.get('play') !== '1') return;
-    setShowPlayer(true);
-    window.requestAnimationFrame(() => mediaRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
-  }, [movie, searchParams]);
+    setShowPlayer(searchParams.get('play') === '1');
+    setShowDownload(false);
+    setTrailerOpen(false);
+  }, [movieId, searchParams]);
 
   if (!movieId) return <ErrorState message="Invalid movie ID." onRetry={() => window.location.reload()} />;
   if (details.isLoading) return <div className="grid min-h-[65vh] place-items-center text-sm font-bold text-gold">Loading film...</div>;
@@ -65,7 +64,6 @@ const MovieDetail: React.FC = () => {
   const playMovie = () => {
     trackEvent('cta_click', { label: 'play' });
     setShowPlayer(true);
-    window.requestAnimationFrame(() => mediaRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
   };
 
   const openTrailer = () => {
@@ -82,55 +80,39 @@ const MovieDetail: React.FC = () => {
 
   return (
     <div className="min-h-screen pb-24">
-      <div className="media-on-dark bg-black text-white">
-        <div className="mx-auto max-w-[1500px] px-5 py-6 sm:px-8 lg:px-10 lg:py-10">
-          <img src={getImageUrl(movie.backdrop_path, 'original')} alt={`${movie.title} backdrop`} className="aspect-[16/8] w-full rounded-xl object-cover object-center sm:aspect-[16/7] lg:aspect-[16/6]" />
-
-          <div className="grid gap-7 py-8 md:grid-cols-[220px_minmax(0,1fr)] lg:grid-cols-[270px_minmax(0,1fr)] lg:gap-10">
-            <img src={getImageUrl(movie.poster_path, 'w500')} alt={`${movie.title} poster`} className="mx-auto aspect-[2/3] w-full max-w-[160px] rounded-xl object-cover sm:max-w-[200px] md:max-w-none" />
-
-            <div className="min-w-0 self-center">
-              <div className="flex flex-wrap items-center gap-2 text-[10px] font-bold uppercase tracking-[0.14em] text-white/55">
-                {releaseYear && <span>{releaseYear}</span>}
-                {movie.runtime > 0 && <span>{Math.floor(movie.runtime / 60)}h {movie.runtime % 60}m</span>}
-                <span className="inline-flex items-center gap-1 text-gold"><Star size={11} fill="currentColor" /> {movie.vote_average.toFixed(1)}</span>
-                {movie.genres.slice(0, 3).map((genre) => <span key={genre.id}>{genre.name}</span>)}
-              </div>
-              <h1 className="cinema-title mt-4 text-[clamp(2.6rem,7vw,7.4rem)] font-black leading-[0.88] tracking-[-0.03em]">{movie.title}</h1>
-              {movie.tagline && <p className="mt-4 text-base font-semibold text-gold/80">{movie.tagline}</p>}
-
-              <div className="mt-6 flex flex-wrap gap-3">
-                <button onClick={playMovie} className="inline-flex min-h-12 items-center gap-2 rounded-lg bg-gold px-6 text-xs font-black uppercase tracking-[0.12em] text-black hover:bg-white"><Play size={17} fill="currentColor" /> Play movie</button>
-                {trailer && <button onClick={() => openTrailer()} className="inline-flex min-h-12 items-center gap-2 rounded-lg border border-white/20 px-5 text-xs font-bold text-white/70 hover:border-white hover:text-white"><Play size={15} /> Trailer</button>}
-                <button onClick={() => void shareMovie()} className="grid h-12 w-12 place-items-center rounded-lg border border-white/20 text-white/60 hover:text-white" aria-label="Share movie"><Share2 size={17} /></button>
-              </div>
-
-              <p className="mt-6 max-w-3xl text-sm leading-7 text-white/65 sm:text-base">{movie.overview}</p>
-
-              <dl className="mt-8 grid max-w-3xl grid-cols-2 gap-3 sm:grid-cols-4">
-                <div className="border-l border-gold/45 pl-3"><dt className="text-[9px] uppercase tracking-wider text-white/35">Status</dt><dd className="mt-1 text-sm font-bold">{movie.status}</dd></div>
-                <div className="border-l border-gold/45 pl-3"><dt className="text-[9px] uppercase tracking-wider text-white/35">Language</dt><dd className="mt-1 text-sm font-bold">{movie.original_language.toUpperCase()}</dd></div>
-                <div className="border-l border-gold/45 pl-3"><dt className="text-[9px] uppercase tracking-wider text-white/35">Director</dt><dd className="mt-1 truncate text-sm font-bold">{director?.name || 'Not listed'}</dd></div>
-                <div className="border-l border-gold/45 pl-3"><dt className="text-[9px] uppercase tracking-wider text-white/35">Release</dt><dd className="mt-1 text-sm font-bold">{movie.release_date || 'TBA'}</dd></div>
-              </dl>
+      <section className="media-on-dark relative isolate overflow-hidden bg-black text-white">
+        <img src={getImageUrl(movie.backdrop_path || movie.poster_path, 'w1280')} alt=""
+          className="absolute inset-0 -z-20 h-full w-full object-cover object-top opacity-55" />
+        <div className="absolute inset-0 -z-10 bg-gradient-to-t from-black via-black/80 to-black/10" />
+        <div className="mx-auto grid max-w-[1280px] items-end gap-6 px-5 pb-8 pt-28 sm:grid-cols-[9rem_minmax(0,1fr)] sm:px-8 sm:pt-40 lg:grid-cols-[12rem_minmax(0,1fr)] lg:gap-9">
+          {movie.poster_path && <img src={getImageUrl(movie.poster_path, 'w500')} alt=""
+            className="hidden aspect-[2/3] w-full rounded-2xl border border-white/15 object-cover shadow-2xl sm:block" />}
+          <div className="min-w-0 sm:col-start-2">
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm font-medium text-white/75">
+              {releaseYear && <span>{releaseYear}</span>}
+              {movie.runtime > 0 && <span>{Math.floor(movie.runtime / 60)}h {movie.runtime % 60}m</span>}
+              {movie.vote_average > 0 && <span className="inline-flex items-center gap-1 text-gold"><Star size={13} fill="currentColor" /> {movie.vote_average.toFixed(1)}</span>}
+              {movie.genres.slice(0, 2).map((genre) => <Link key={genre.id} to={`/explore?genre=${genre.id}`}
+                className="rounded-full border border-white/15 px-2.5 py-0.5 text-xs hover:border-gold/50">{genre.name}</Link>)}
             </div>
+            <h1 className="mt-3 max-w-4xl text-balance text-4xl font-black leading-none tracking-tight sm:text-5xl lg:text-7xl">{movie.title}</h1>
+            <div className="mt-5 flex flex-wrap items-center gap-2">
+              <button onClick={playMovie} className="inline-flex min-h-11 items-center gap-2 rounded-full bg-gold px-5 text-sm font-bold text-black hover:bg-white">
+                <Play size={17} fill="currentColor" /> Play movie
+              </button>
+              <button type="button" onClick={() => setShowDownload(true)} className="inline-flex min-h-11 items-center gap-2 rounded-full border border-white/20 bg-black/30 px-4 text-sm font-semibold text-white hover:border-gold/50">
+                <Download size={17} /> Download
+              </button>
+              {trailer && <button onClick={openTrailer} className="min-h-11 rounded-full px-3 text-sm font-semibold text-white/75 hover:text-white">Trailer</button>}
+              <button onClick={() => void shareMovie()} className="grid h-11 w-11 place-items-center rounded-full text-white/75 hover:bg-white/10 hover:text-white" aria-label="Share movie"><Share2 size={18} /></button>
+            </div>
+            {movie.overview && <p className="mt-5 max-w-2xl text-sm leading-6 text-white/75 sm:text-base">{movie.overview}</p>}
+            {director && <p className="mt-3 text-sm text-white/55">Directed by {director.name}</p>}
           </div>
         </div>
-      </div>
+      </section>
 
-      <button className="mb-4 rounded-full border border-white/20 px-5 py-3 text-sm font-bold" onClick={() => setShowDownload(true)}>Download movie</button>
       <DownloadModal isOpen={showDownload} onClose={() => setShowDownload(false)} request={playbackRequest} title={movie.title} sources={sourcesQuery.data || []} loading={sourcesQuery.isFetching} error={sourcesQuery.error?.message} onRetry={() => void sourcesQuery.refetch()} />
-      {!showPlayer && (
-        <section ref={mediaRef} className="scroll-mt-20 border-b border-white/10 py-10">
-          <div className="mx-auto max-w-[1280px] px-5 sm:px-8 lg:px-10">
-            <div className="mb-5"><h2 className="text-xl font-black">Watch the movie</h2></div>
-            <button onClick={playMovie} className="group relative block aspect-video w-full overflow-hidden rounded-xl bg-black text-white">
-              <img src={getImageUrl(movie.backdrop_path, 'w1280')} alt="" className="h-full w-full object-cover opacity-55 transition-transform duration-500 group-hover:scale-[1.02]" />
-              <span className="absolute inset-0 grid place-items-center"><span className="inline-flex items-center gap-3 rounded-lg bg-gold px-6 py-4 text-sm font-black uppercase tracking-wider text-black"><Play size={19} fill="currentColor" /> Play full movie</span></span>
-            </button>
-          </div>
-        </section>
-      )}
       {showPlayer && (
         <VideoPlayer
           mediaKey={`movie-${movieId}`}

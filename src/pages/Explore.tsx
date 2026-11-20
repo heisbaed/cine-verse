@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
-import { Film, LoaderCircle, Search, Tv, UserRound, X } from 'lucide-react';
+import { Film, LoaderCircle, Search, SlidersHorizontal, Tv, UserRound, X } from 'lucide-react';
 import { useDebounce } from '@/hooks/useDebounce';
 import {
   discoverMovies,
@@ -96,6 +96,7 @@ const Explore: React.FC = () => {
   const contentType = searchParams.get('type') === 'tv' ? 'tv' : 'movie';
   const [query, setQuery] = useState(urlQuery);
   const [selectedGenre, setSelectedGenre] = useState(urlGenre);
+  const [showFilters, setShowFilters] = useState(false);
   const [year, setYear] = useState('');
   const region = searchParams.get('region') || '';
   const regionIsCountry = region === 'ZA' || region === 'NG';
@@ -291,6 +292,7 @@ const Explore: React.FC = () => {
   const media = searchResults?.pages.flatMap((page) => page.results) || [];
   const genres = genresData?.genres || [];
   const totalResults = searchResults?.pages[0]?.total_results || 0;
+  const advancedFilters = [year, minRating, sortBy !== 'popularity.desc'].filter(Boolean).length;
 
   return (
     <div className="mx-auto min-h-screen max-w-[100rem] px-4 py-7 sm:px-6 sm:py-10">
@@ -439,7 +441,14 @@ const Explore: React.FC = () => {
           )}
         </div>
 
-        {!query.trim() && <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+        {!query.trim() && (
+          <button type="button" aria-expanded={showFilters} aria-controls="explore-filters"
+            onClick={() => setShowFilters((open) => !open)}
+            className="inline-flex items-center gap-2 rounded-full border border-white/10 px-3 py-2 text-sm font-semibold text-white/75 hover:border-gold/40">
+            <SlidersHorizontal size={16} aria-hidden="true" /> Filters{advancedFilters ? ` · ${advancedFilters}` : ''}
+          </button>
+        )}
+        {!query.trim() && showFilters && <div id="explore-filters" className="grid grid-cols-2 gap-3 sm:grid-cols-3">
           <select
             value={year}
             onChange={(event) => setYear(event.target.value)}

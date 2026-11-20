@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { useQueries, useQuery } from '@tanstack/react-query';
 import { Activity, ArrowUpRight, BarChart3, Clock3, Download, FileDown, Film, Globe2, Lock, LogOut, Moon, Play, RefreshCw, Search, Smartphone, Sun, Users } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
@@ -68,7 +68,9 @@ export default function Dashboard() {
     if (smokeMode) {
       value.connected = true;
       value.feeds.main.ready = true;
+      value.feeds.main.source = 'live';
       value.feeds.launch.ready = true;
+      value.feeds.launch.source = 'live';
       if (new URLSearchParams(window.location.search).get('dashboard-smoke') !== 'empty') {
         const sample = (id: string, name: TrackingEvent['name'], label?: string): TrackingEvent => ({
           id, name, label, site: 'main', path: '/movie/157336', timestamp: Date.now() - 1000,
@@ -81,6 +83,7 @@ export default function Dashboard() {
     }
     return value;
   });
+  const lastSnapshot = useRef<{ uid: string; value: typeof snapshot } | null>(null);
   const [clock, setClock] = useState(Date.now());
   const [revision, setRevision] = useState(0);
   const [showHeartbeats, setShowHeartbeats] = useState(false);
@@ -95,10 +98,20 @@ export default function Dashboard() {
     return () => { clearInterval(timer); window.removeEventListener('focus', tick); };
   }, []);
   useEffect(() => {
-    if (!authorized) { setSnapshot(emptySnapshot()); return; }
     if (smokeMode) return;
-    return subscribeAnalytics(since, setSnapshot);
-  }, [authorized, user?.uid, since, revision, smokeMode]);
+    if (!authorized || !user) {
+      lastSnapshot.current = null;
+      setSnapshot(emptySnapshot());
+      return;
+    }
+    const previous = lastSnapshot.current?.uid === user.uid ? lastSnapshot.current.value : undefined;
+    if (!previous) setSnapshot(emptySnapshot());
+    return subscribeAnalytics(since, user, (value) => {
+      lastSnapshot.current = { uid: user.uid, value };
+      setSnapshot(value);
+      setClock(Date.now());
+    }, previous);
+  }, [authorized, user, since, revision, smokeMode]);
   useEffect(() => {
     const bump = () => setHealthTick((v) => v + 1);
     window.addEventListener(HEALTH_EVENT, bump);
@@ -115,7 +128,10 @@ export default function Dashboard() {
   const ready = authorized && feeds.some(([, feed]) => feed.ready);
   const partial = feeds.some(([, feed]) => !feed.ready || feed.error);
   const capped = feeds.some(([, feed]) => feed.capped);
-  const status = !ready ? (feeds.some(([, feed]) => feed.error) ? 'Connection failed' : 'Connecting') : !snapshot.connected ? 'Offline · saved view' : partial ? 'Partial data' : 'Live';
+  const live = snapshot.connected && feeds.every(([, feed]) => feed.source === 'live' && !feed.error);
+  const refreshed = feeds.some(([, feed]) => feed.source === 'refresh');
+  const status = !ready ? (feeds.some(([, feed]) => feed.error) ? 'Connection failed' : 'Connecting')
+    : partial ? 'Partial data' : live ? 'Live' : refreshed ? 'Refreshing every minute' : 'Reconnecting · last received data';
   const metric = (value: number) => ready ? number(value) : '—';
   const measured = (value: number, available: boolean) => ready && available ? duration(value) : '—';
   const stream = data.current.filter((event) => showHeartbeats || !event.name.startsWith('session_')).slice(-25).reverse();
@@ -149,7 +165,16 @@ export default function Dashboard() {
           <label>Period<select value={days} onChange={(event) => setDays(Number(event.target.value))}><option value={1}>Today</option><option value={7}>Last 7 days</option><option value={30}>Last 30 days</option></select></label></div>
         <div className="analytics-actions"><button className="signal-action" onClick={() => { setRevision((v) => v + 1); releases.forEach((release) => { void release.refetch(); }); }}><RefreshCw size={14} />Reconnect</button><button className="signal-action" disabled={!ready || !data.current.length} onClick={() => exportCsv(data.current)}><FileDown size={14} />Export</button><button className="signal-action" disabled={!ready || !data.current.length} onClick={() => exportJson(data.current)} title="Full-fidelity JSON backup — keep monthly, feeds cap at 50,000 events"><Download size={14} />Backup</button></div>
       </div>
-      {(!snapshot.connected || partial || capped) && <div className="analytics-notice" role="status">{!ready ? 'Waiting for analytics. Values stay blank until data arrives.' : !snapshot.connected ? 'Connection interrupted. Showing the last received data; reconnection is automatic.' : partial ? 'One data source is unavailable. Totals include only the sources received.' : ''}{capped ? ' This period reached the 50,000-event limit for a source. Totals are partial; select a shorter period.' : ''}{feeds.filter(([, feed]) => feed.error).map(([name, feed]) => <div key={name}>{name}: {feed.error}</div>)}</div>}
+      {(!live || capped) && (
+        <div className="analytics-notice" role="status">
+          {!ready ? 'Waiting for analytics data from Firebase.'
+            : partial ? 'Showing the data received so far.'
+            : refreshed ? 'Live updates are unavailable. Firebase totals refresh every minute.'
+            : !live ? 'Showing the last received data while the dashboard reconnects.' : ''}
+          {capped ? ' This period reached the 50,000-event limit for a source. Select a shorter period for complete totals.' : ''}
+          {feeds.filter(([, feed]) => feed.error).map(([name, feed]) => <div key={name}>{name}: {feed.error}</div>)}
+        </div>
+      )}
       <section className="analytics-metrics" aria-label="Audience metrics">
         {[
           { label: 'Active now', value: metric(data.activeNow), note: 'Sessions seen in the last 90 seconds', Icon: Activity },
