@@ -1,9 +1,8 @@
-import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useQueries, useQuery } from '@tanstack/react-query';
 import { Activity, ArrowUpRight, BarChart3, Clock3, Download, FileDown, Film, Globe2, Lock, LogOut, Moon, Play, RefreshCw, Search, Smartphone, Sun, Users } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSEO } from '@/hooks/useSEO';
-import AnalyticsErrorBoundary from '@/components/analytics/AnalyticsErrorBoundary';
 import { getMovieDetails, getTVDetails } from '@/api/tmdb';
 import { buildAnalytics, periodBounds, SURFACE_LABELS, type SurfaceFilter, type TitleMetric } from '@/lib/analytics';
 import { emptySnapshot, subscribeAnalytics } from '@/lib/liveAnalytics';
@@ -12,8 +11,6 @@ import type { TrackingEvent } from '@/lib/siteTracking';
 
 import { getReleaseDownloads, RELEASE_REPOSITORIES } from '@/lib/releaseAnalytics';
 import { APP_RELEASE } from '@/config/appRelease';
-
-const CinePet = lazy(() => import('@/components/analytics/CinePet'));
 
 const ADMINS = ((import.meta.env.VITE_DASHBOARD_ADMINS as string | undefined) || 'charlesbabuu0@gmail.com').split(',').map((v) => v.trim().toLowerCase());
 const number = (value: number) => new Intl.NumberFormat('en-US').format(value);
@@ -124,8 +121,10 @@ export default function Dashboard() {
     queryFn: ({ signal }: { signal: AbortSignal }) => getReleaseDownloads(source, signal),
     enabled: authorized && !smokeMode, refetchInterval: 5 * 60_000, staleTime: 60_000, retry: 1,
   })) });
-  const feeds = Object.entries(snapshot.feeds);
-  const ready = authorized && feeds.some(([, feed]) => feed.ready);
+  const allFeeds = Object.entries(snapshot.feeds);
+  const feeds = surface === 'all' ? allFeeds : allFeeds.filter(([site]) => site === (surface === 'launch' ? 'launch' : 'main'));
+  // An empty launch feed cannot make the main website and app totals ready.
+  const ready = authorized && snapshot.feeds[surface === 'launch' ? 'launch' : 'main'].ready;
   const partial = feeds.some(([, feed]) => !feed.ready || feed.error);
   const capped = feeds.some(([, feed]) => feed.capped);
   const live = snapshot.connected && feeds.every(([, feed]) => feed.source === 'live' && !feed.error);
@@ -167,13 +166,19 @@ export default function Dashboard() {
       </div>
       {(!live || capped) && (
         <div className="analytics-notice" role="status">
-          {!ready ? 'Waiting for analytics data from Firebase.'
+          {!ready ? (surface === 'launch' ? 'Waiting for the launch-site feed.' : 'Waiting for the website and app feed.')
             : partial ? 'Showing the data received so far.'
             : refreshed ? 'Live updates are unavailable. Firebase totals refresh every minute.'
             : !live ? 'Showing the last received data while the dashboard reconnects.' : ''}
           {capped ? ' This period reached the 50,000-event limit for a source. Select a shorter period for complete totals.' : ''}
           {feeds.filter(([, feed]) => feed.error).map(([name, feed]) => <div key={name}>{name}: {feed.error}</div>)}
         </div>
+      )}
+      {ready && data.current.length === 0 && (
+        <p className="analytics-notice" role="status">
+          No {SURFACE_LABELS[surface].toLowerCase()} events recorded {days === 1 ? 'today' : `in the last ${days} days`}.
+          {' '}Try All Platforms or a longer period.
+        </p>
       )}
       <section className="analytics-metrics" aria-label="Audience metrics">
         {[
@@ -203,7 +208,7 @@ export default function Dashboard() {
       <section id="platforms" className="analytics-section"><div className="analytics-section-heading"><div><h2>Platform health</h2><p>All platforms in this period. Select a card to inspect its activity.</p></div><Smartphone size={20} /></div>
         <div className="analytics-platforms">{surfaces.filter((key) => ['android', 'web', 'launch'].includes(key) || data.surfaces.some((s) => s.name === key)).map((key) => {
           const entry = data.surfaces.find((s) => s.name === key);
-          return <button key={key} className="signal-card analytics-platform" data-selected={surface === key} onClick={() => setSurface(surface === key ? 'all' : key)}><span>{SURFACE_LABELS[key]}<ArrowUpRight size={15} /></span><strong>{ready ? number(entry?.sessions || 0) : '—'} <small>sessions</small></strong><p>{entry ? `${number(entry.events)} events · ${ago(entry.latest, now)}` : 'No events received in this period'}</p>{key === 'native' && <small>Legacy app events without OS metadata</small>}{key === 'unknown' && <small>Older events without a platform marker</small>}</button>;
+          return <button key={key} className="signal-card analytics-platform" data-selected={surface === key} onClick={() => setSurface(surface === key ? 'all' : key)}><span>{SURFACE_LABELS[key]}<ArrowUpRight size={15} /></span><strong>{snapshot.feeds[key === 'launch' ? 'launch' : 'main'].ready ? number(entry?.sessions || 0) : '—'} <small>sessions</small></strong><p>{entry ? `${number(entry.events)} events · ${ago(entry.latest, now)}` : 'No events received in this period'}</p>{key === 'native' && <small>Legacy app events without OS metadata</small>}{key === 'unknown' && <small>Older events without a platform marker</small>}</button>;
         })}</div>
       </section>
       <section className="analytics-section"><div className="analytics-section-heading"><div><h2>Engagement</h2><p>{SURFACE_LABELS[surface]} · selected period</p></div><Play size={20} /></div>
@@ -238,7 +243,6 @@ export default function Dashboard() {
         {stream.length ? <div className="analytics-table-wrap"><table><thead><tr><th>Event</th><th>Platform</th><th>Page / screen</th><th>Detail</th><th>Received</th></tr></thead><tbody>{stream.map((event) => <tr key={`${event.site}:${event.id}`}><td>{event.name.replace(/_/g, ' ')}</td><td><span className="analytics-badge">{SURFACE_LABELS[event.surface]}</span></td><td>{event.path}</td><td>{event.label || '—'}{event.durationMs ? ` · ${duration(event.durationMs)}` : ''}</td><td title={new Date(event.timestamp).toLocaleString()}>{ago(event.timestamp, now)}</td></tr>)}</tbody></table></div> : <div className="analytics-empty">{showHeartbeats ? 'No events received for this selection.' : 'No interactions yet. Enable sessions to see connections and heartbeats.'}</div>}
       </section>
       <footer className="analytics-footer"><span>Firebase Realtime Database · {number(data.current.length)} events in view · dashboard activity excluded</span><span>Sessions identify visits, not people. Unavailable measurements show —.</span></footer>
-      <AnalyticsErrorBoundary optional><Suspense fallback={null}><CinePet data={data} ready={ready} days={days} surfaceLabel={SURFACE_LABELS[surface]} /></Suspense></AnalyticsErrorBoundary>
     </main>
   </div>;
 }
