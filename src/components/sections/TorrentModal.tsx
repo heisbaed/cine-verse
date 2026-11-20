@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { AnimatePresence, motion } from 'framer-motion';
 import { ArrowDownWideNarrow, Copy, Download, Magnet, X } from 'lucide-react';
-import { getTorrentPackages } from '@/api/torrents';
+import { getTorrentPackages, getTVTorrentPackages } from '@/api/torrents';
 import { trackEvent } from '@/lib/siteTracking';
 
 type SortKey = 'seeds' | 'quality' | 'size-asc' | 'size-desc';
@@ -30,6 +30,9 @@ interface TorrentModalProps {
   movieTitle: string;
   imdbId?: string | null;
   year?: string;
+  episode?: { season: number; episode: number };
+  selection?: React.ReactNode;
+  selectionReady?: boolean;
 }
 
 const TorrentModal: React.FC<TorrentModalProps> = ({
@@ -38,11 +41,16 @@ const TorrentModal: React.FC<TorrentModalProps> = ({
   movieTitle,
   imdbId,
   year,
+  episode,
+  selection,
+  selectionReady = true,
 }) => {
   const { data, isLoading, isError, refetch } = useQuery({
-    queryKey: ['torrentPackages', imdbId || movieTitle, year],
-    queryFn: () => getTorrentPackages({ imdbId, title: movieTitle, year }),
-    enabled: isOpen,
+    queryKey: ['torrentPackages', imdbId || movieTitle, year, episode?.season, episode?.episode],
+    queryFn: () => episode
+      ? getTVTorrentPackages({ imdbId, ...episode })
+      : getTorrentPackages({ imdbId, title: movieTitle, year }),
+    enabled: isOpen && selectionReady,
     staleTime: 1000 * 60 * 30,
   });
   const [sort, setSort] = useState<SortKey>('seeds');
@@ -161,6 +169,10 @@ const TorrentModal: React.FC<TorrentModalProps> = ({
               or copy the magnet link instead.
             </p>
 
+            {selection}
+            {episode && <p className="mt-3 text-xs text-gold">Season {episode.season} · Episode {episode.episode}. Some releases contain a season pack; select this episode in your torrent client.</p>}
+            {!selectionReady && <p className="mt-5 text-sm text-white/60">Select an aired episode with an available series ID to search downloads.</p>}
+
             {!isLoading && !isError && allPackages.length > 0 && (
               <div className="mt-5 space-y-3 border-t border-white/10 pt-4">
                 <div className="flex flex-wrap items-center gap-2">
@@ -270,12 +282,11 @@ const TorrentModal: React.FC<TorrentModalProps> = ({
               </div>
             )}
 
-            {!isLoading && !isError && allPackages.length === 0 && (
+            {selectionReady && !isLoading && !isError && allPackages.length === 0 && (
               <div className="mt-6 rounded-xl border border-white/10 p-6 text-center">
                 <p className="text-sm font-bold">No torrent packages found.</p>
                 <p className="mt-2 text-xs leading-5 text-white/50">
-                  This title has no indexed releases yet. Try the trailer or
-                  check back after release.
+                  No indexed releases for this selection. Try another episode or check back later.
                 </p>
               </div>
             )}

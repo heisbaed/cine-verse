@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useInfiniteQuery } from '@tanstack/react-query';
 import { Film, Globe, Tv } from 'lucide-react';
 import { discoverMovies, discoverTVShows, hasApiKey } from '@/api/tmdb';
 import MovieGrid from '@/components/sections/MovieGrid';
@@ -16,9 +16,9 @@ interface Region {
 const regions: Region[] = [
   { name: 'Hollywood', params: { with_original_language: 'en' } },
   { name: 'Bollywood', params: { with_original_language: 'hi' } },
-  { name: 'Nollywood', params: { with_original_language: 'yo' } },
-  { name: 'East Africa', params: { with_original_language: 'sw' } },
-  { name: 'South Africa', params: { with_original_language: 'af' } },
+  { name: 'Nollywood', params: { with_origin_country: 'NG' } },
+  { name: 'East Africa', params: { with_origin_country: 'KE|TZ|UG' } },
+  { name: 'South Africa', params: { with_origin_country: 'ZA' } },
   { name: 'Korean Cinema', params: { with_original_language: 'ko' } },
   { name: 'Japanese Cinema', params: { with_original_language: 'ja' } },
   { name: 'Chinese Cinema', params: { with_original_language: 'zh' } },
@@ -44,17 +44,19 @@ const Global: React.FC = () => {
     data: regionMovies,
     isLoading,
     error,
-    refetch,
-  } = useQuery<MediaResponse>({
+    refetch, fetchNextPage, hasNextPage, isFetchingNextPage,
+  } = useInfiniteQuery({
     queryKey: ['globalMedia', contentType, selectedRegion.name],
-    queryFn: () =>
+    initialPageParam: 1,
+    getNextPageParam: (last: MediaResponse) => last.page < Math.min(last.total_pages, 500) ? last.page + 1 : undefined,
+    queryFn: ({ pageParam }) =>
       contentType === 'tv'
         ? discoverTVShows({
-            ...selectedRegion.params,
+            ...selectedRegion.params, page: String(pageParam),
             sort_by: 'popularity.desc',
           })
         : discoverMovies({
-            ...selectedRegion.params,
+            ...selectedRegion.params, page: String(pageParam),
             sort_by: 'popularity.desc',
           }),
     enabled: hasApiKey(),
@@ -64,7 +66,7 @@ const Global: React.FC = () => {
     return <SetupScreen />;
   }
 
-  const media = regionMovies?.results || [];
+  const media = regionMovies?.pages.flatMap((page) => page.results) || [];
 
   return (
     <div className="min-h-screen px-6 py-10">
@@ -127,6 +129,7 @@ const Global: React.FC = () => {
         ))}
       </div>
 
+
       {error ? (
         <ErrorState
           message={`Failed to load regional ${contentType === 'tv' ? 'TV series' : 'movies'}.`}
@@ -135,6 +138,7 @@ const Global: React.FC = () => {
       ) : (
         <MovieGrid movies={media} isLoading={isLoading} />
       )}
+      {hasNextPage && <button className="mx-auto mt-8 block rounded-full bg-gold px-6 py-3 font-bold text-background" disabled={isFetchingNextPage} onClick={() => void fetchNextPage()}>{isFetchingNextPage ? 'Loading…' : 'Load more'}</button>}
     </div>
   );
 };

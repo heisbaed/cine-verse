@@ -1,6 +1,7 @@
+import DownloadModal from '@/components/sections/DownloadModal';
 import React, { useEffect, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Download, ExternalLink, Play, Share2, Star, User } from 'lucide-react';
+import { ExternalLink, Play, Share2, Star, User } from 'lucide-react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import {
   getImageUrl,
@@ -12,14 +13,13 @@ import {
   getSimilarMovies,
 } from '@/api/tmdb';
 import MovieRow from '@/components/sections/MovieRow';
-import TorrentModal from '@/components/sections/TorrentModal';
 import TrailerModal from '@/components/sections/TrailerModal';
 import VideoPlayer from '@/components/sections/VideoPlayer';
 import ErrorState from '@/components/ui/ErrorState';
+import { usePlaybackSources } from '@/hooks/usePlaybackSources';
 import { useSEO } from '@/hooks/useSEO';
 import { trackEvent } from '@/lib/siteTracking';
 import { useViewHistoryStore } from '@/store/viewHistoryStore';
-import { getMovieEmbedSources } from '@/utils/embedSources';
 
 const MovieDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -27,9 +27,7 @@ const MovieDetail: React.FC = () => {
   const movieId = Number(id);
   const mediaRef = useRef<HTMLElement>(null);
   const [trailerOpen, setTrailerOpen] = useState(false);
-  const [torrentOpen, setTorrentOpen] = useState(
-    searchParams.get('torrents') === '1',
-  );
+  const [showDownload, setShowDownload] = useState(false);
   const [showPlayer, setShowPlayer] = useState(searchParams.get('play') === '1');
   const addRecentlyViewed = useViewHistoryStore((state) => state.addRecentlyViewed);
 
@@ -40,6 +38,8 @@ const MovieDetail: React.FC = () => {
   const recommended = useQuery({ queryKey: ['recommendedMovies', movieId], queryFn: () => getRecommendedMovies(movieId), enabled: movieId > 0 });
   const reviews = useQuery({ queryKey: ['movieReviews', movieId], queryFn: () => getMovieReviews(movieId), enabled: movieId > 0 });
   const movie = details.data;
+  const playbackRequest = movieId > 0 ? { kind: 'movie' as const, tmdbId: movieId } : null;
+  const sourcesQuery = usePlaybackSources(showPlayer || showDownload ? playbackRequest : null);
 
   useSEO({ title: movie?.title || 'Movie Details', description: movie?.overview?.slice(0, 160) || '', image: movie?.poster_path ? getImageUrl(movie.poster_path, 'w500') : undefined });
 
@@ -66,11 +66,6 @@ const MovieDetail: React.FC = () => {
     trackEvent('cta_click', { label: 'play' });
     setShowPlayer(true);
     window.requestAnimationFrame(() => mediaRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
-  };
-
-  const openTorrents = () => {
-    trackEvent('cta_click', { label: 'torrent-open' });
-    setTorrentOpen(true);
   };
 
   const openTrailer = () => {
@@ -106,7 +101,6 @@ const MovieDetail: React.FC = () => {
 
               <div className="mt-6 flex flex-wrap gap-3">
                 <button onClick={playMovie} className="inline-flex min-h-12 items-center gap-2 rounded-lg bg-gold px-6 text-xs font-black uppercase tracking-[0.12em] text-black hover:bg-white"><Play size={17} fill="currentColor" /> Play movie</button>
-                <button onClick={() => openTorrents()} className="inline-flex min-h-12 items-center gap-2 rounded-lg border border-gold/60 px-6 text-xs font-black uppercase tracking-[0.12em] text-gold hover:bg-gold hover:text-black"><Download size={17} /> Download torrent</button>
                 {trailer && <button onClick={() => openTrailer()} className="inline-flex min-h-12 items-center gap-2 rounded-lg border border-white/20 px-5 text-xs font-bold text-white/70 hover:border-white hover:text-white"><Play size={15} /> Trailer</button>}
                 <button onClick={() => void shareMovie()} className="grid h-12 w-12 place-items-center rounded-lg border border-white/20 text-white/60 hover:text-white" aria-label="Share movie"><Share2 size={17} /></button>
               </div>
@@ -124,19 +118,33 @@ const MovieDetail: React.FC = () => {
         </div>
       </div>
 
-      <section ref={mediaRef} className="scroll-mt-20 border-b border-white/10 py-10">
-        <div className="mx-auto max-w-[1280px] px-5 sm:px-8 lg:px-10">
-          <div className="mb-5 flex items-center justify-between gap-4"><h2 className="text-xl font-black">{showPlayer ? 'Now playing' : 'Watch the movie'}</h2>{!showPlayer && <button onClick={playMovie} className="text-xs font-bold text-gold">Start player</button>}</div>
-          {showPlayer ? (
-            <VideoPlayer embed src={getMovieEmbedSources(movie.id)[0].url} sources={getMovieEmbedSources(movie.id)} poster={getImageUrl(movie.backdrop_path, 'w1280')} title={movie.title} />
-          ) : (
+      <button className="mb-4 rounded-full border border-white/20 px-5 py-3 text-sm font-bold" onClick={() => setShowDownload(true)}>Download movie</button>
+      <DownloadModal isOpen={showDownload} onClose={() => setShowDownload(false)} request={playbackRequest} title={movie.title} sources={sourcesQuery.data || []} loading={sourcesQuery.isFetching} error={sourcesQuery.error?.message} onRetry={() => void sourcesQuery.refetch()} />
+      {!showPlayer && (
+        <section ref={mediaRef} className="scroll-mt-20 border-b border-white/10 py-10">
+          <div className="mx-auto max-w-[1280px] px-5 sm:px-8 lg:px-10">
+            <div className="mb-5"><h2 className="text-xl font-black">Watch the movie</h2></div>
             <button onClick={playMovie} className="group relative block aspect-video w-full overflow-hidden rounded-xl bg-black text-white">
               <img src={getImageUrl(movie.backdrop_path, 'w1280')} alt="" className="h-full w-full object-cover opacity-55 transition-transform duration-500 group-hover:scale-[1.02]" />
               <span className="absolute inset-0 grid place-items-center"><span className="inline-flex items-center gap-3 rounded-lg bg-gold px-6 py-4 text-sm font-black uppercase tracking-wider text-black"><Play size={19} fill="currentColor" /> Play full movie</span></span>
             </button>
-          )}
-        </div>
-      </section>
+          </div>
+        </section>
+      )}
+      {showPlayer && (
+        <VideoPlayer
+          mediaKey={`movie-${movieId}`}
+          sources={sourcesQuery.data ?? []}
+          loading={sourcesQuery.isLoading}
+          error={sourcesQuery.isError ? sourcesQuery.error.message : null}
+          onRetry={() => sourcesQuery.refetch()}
+          poster={getImageUrl(movie.backdrop_path, 'w1280')}
+          title={movie.title}
+          subtitle={releaseYear ? `${releaseYear} · Movie` : 'Movie'}
+          kind="movie"
+          onClose={() => setShowPlayer(false)}
+        />
+      )}
 
       {cast.length > 0 && (
         <section className="mx-auto max-w-[1500px] px-5 py-10 sm:px-8 lg:px-10">
@@ -172,13 +180,6 @@ const MovieDetail: React.FC = () => {
       {recommended.data?.results.length ? <MovieRow title="More like this" movies={recommended.data.results.slice(0, 12)} /> : null}
 
       <TrailerModal isOpen={trailerOpen} onClose={() => setTrailerOpen(false)} videos={videos.data?.results || []} title={movie.title} />
-      <TorrentModal
-        isOpen={torrentOpen}
-        onClose={() => setTorrentOpen(false)}
-        movieTitle={movie.title}
-        imdbId={movie.imdb_id}
-        year={movie.release_date}
-      />
     </div>
   );
 };

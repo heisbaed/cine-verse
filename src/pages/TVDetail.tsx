@@ -1,3 +1,6 @@
+import DownloadModal from '@/components/sections/DownloadModal';
+import EpisodeJump from '@/components/sections/EpisodeJump';
+import { isUpcomingEpisode, releaseLabel } from '@/api/episodeRelease';
 import React, { useEffect, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -27,21 +30,22 @@ import MovieCard from '@/components/movie/MovieCard';
 import CastCarousel from '@/components/sections/CastCarousel';
 import CrewSection from '@/components/sections/CrewSection';
 import ReviewsSection from '@/components/sections/ReviewsSection';
-import TrailerModal from '@/components/sections/TrailerModal';
 import TrailerSection from '@/components/sections/TrailerSection';
 import VideoPlayer from '@/components/sections/VideoPlayer';
 import ErrorState from '@/components/ui/ErrorState';
+import { usePlaybackSources } from '@/hooks/usePlaybackSources';
 import { useSEO } from '@/hooks/useSEO';
 import { trackEvent } from '@/lib/siteTracking';
 import { useViewHistoryStore } from '@/store/viewHistoryStore';
-import { getTVEmbedSources } from '@/utils/embedSources';
 
 const TVDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const tvId = Number.parseInt(id || '0');
-  const [trailerOpen, setTrailerOpen] = useState(false);
+  const [showDownload, setShowDownload] = useState(false);
   const [watchMode, setWatchMode] = useState<'trailer' | 'series'>('trailer');
+  const [playerOpen, setPlayerOpen] = useState(false);
   const [selectedSeason, setSelectedSeason] = useState(1);
+  const initializedShow = useRef<number | null>(null);
   const [selectedEpisode, setSelectedEpisode] = useState(1);
   const mediaSectionRef = useRef<HTMLDivElement>(null);
   const addRecentlyViewed = useViewHistoryStore(
@@ -54,7 +58,7 @@ const TVDetail: React.FC = () => {
     error: detailsError,
     refetch: refetchDetails,
   } = useQuery({
-    queryKey: ['tvDetails', tvId],
+    queryKey: ['tvDetails', tvId, 'catalog-seasons-v1'],
     queryFn: () => getTVDetails(tvId),
     enabled: !!tvId,
   });
@@ -98,10 +102,18 @@ const TVDetail: React.FC = () => {
   });
 
   const { data: seasonDetails, isLoading: seasonLoading } = useQuery({
-    queryKey: ['tvSeasonDetails', tvId, selectedSeason],
+    queryKey: ['tvSeasonDetails', tvId, selectedSeason, 'catalog-seasons-v1'],
     queryFn: () => getTVSeasonDetails(tvId, selectedSeason),
     enabled: !!tvId && selectedSeason >= 0,
   });
+
+  const playbackRequest = tvId > 0
+    ? { kind: 'tv' as const, tmdbId: tvId, season: selectedSeason, episode: selectedEpisode }
+    : null;
+  const selectedAirDate = seasonDetails?.episodes.find(item => item.episode_number === selectedEpisode)?.air_date;
+  const upcoming = isUpcomingEpisode(selectedAirDate);
+  const sourcesQuery = usePlaybackSources((playerOpen || showDownload) && !upcoming ? playbackRequest : null);
+  useEffect(() => { if (upcoming) { setPlayerOpen(false); setShowDownload(false); } }, [upcoming]);
 
   useEffect(() => {
     if (!details) return;
@@ -109,8 +121,11 @@ const TVDetail: React.FC = () => {
       details.seasons.find(
         (season) => season.season_number > 0 && season.episode_count > 0,
       ) || details.seasons.find((season) => season.episode_count > 0);
-    setSelectedSeason(firstSeason?.season_number || 1);
-    setSelectedEpisode(1);
+    if (initializedShow.current !== tvId) {
+      initializedShow.current = tvId;
+      setSelectedSeason(firstSeason?.season_number || 1);
+      setSelectedEpisode(1);
+    }
     addRecentlyViewed(details);
   }, [details, addRecentlyViewed]);
 
@@ -176,14 +191,41 @@ const TVDetail: React.FC = () => {
     (season) => season.season_number === selectedSeason,
   );
   const episodeCount =
-    seasonDetails?.episodes.length || activeSeason?.episode_count || 1;
+    Math.max(seasonDetails?.episodes.length || activeSeason?.episode_count || 1, selectedEpisode);
   const activeEpisode = seasonDetails?.episodes.find(
     (episode) => episode.episode_number === selectedEpisode,
   );
+  const seasonIndex = playableSeasons.findIndex(
+    (season) => season.season_number === selectedSeason,
+  );
+  const hasPrevEpisode = selectedEpisode > 1 || seasonIndex > 0;
+  const nextAirDate = selectedEpisode < episodeCount
+    ? seasonDetails?.episodes.find(item => item.episode_number === selectedEpisode + 1)?.air_date
+    : playableSeasons[seasonIndex + 1]?.air_date;
+  const hasNextEpisode = !isUpcomingEpisode(nextAirDate) && (selectedEpisode < episodeCount || (seasonIndex >= 0 && seasonIndex < playableSeasons.length - 1));
+  const nextEpisodeTitle = seasonDetails?.episodes.find(
+    (episode) => episode.episode_number === selectedEpisode + 1,
+  )?.name;
+  const switchEpisode = (direction: -1 | 1) => {
+    if (direction === 1) {
+      if (selectedEpisode < episodeCount) setSelectedEpisode(selectedEpisode + 1);
+      else if (seasonIndex >= 0 && seasonIndex < playableSeasons.length - 1) {
+        setSelectedSeason(playableSeasons[seasonIndex + 1].season_number);
+        setSelectedEpisode(1);
+      }
+    } else if (selectedEpisode > 1) setSelectedEpisode(selectedEpisode - 1);
+    else if (seasonIndex > 0) {
+      const previousSeason = playableSeasons[seasonIndex - 1];
+      setSelectedSeason(previousSeason.season_number);
+      setSelectedEpisode(previousSeason.episode_count || 1);
+    }
+    setPlayerOpen(true);
+  };
 
   const showSeries = () => {
     trackEvent('cta_click', { label: 'play' });
     setWatchMode('series');
+    setPlayerOpen(true);
     window.requestAnimationFrame(() => {
       mediaSectionRef.current?.scrollIntoView({
         behavior: 'smooth',
@@ -210,6 +252,7 @@ const TVDetail: React.FC = () => {
     setSelectedSeason(seasonNumber);
     setSelectedEpisode(1);
     setWatchMode('series');
+    setPlayerOpen(true);
     window.requestAnimationFrame(() => {
       mediaSectionRef.current?.scrollIntoView({
         behavior: 'smooth',
@@ -221,6 +264,7 @@ const TVDetail: React.FC = () => {
   const selectEpisode = (episodeNumber: number) => {
     setSelectedEpisode(episodeNumber);
     setWatchMode('series');
+    setPlayerOpen(true);
     window.requestAnimationFrame(() => {
       mediaSectionRef.current?.scrollIntoView({
         behavior: 'smooth',
@@ -356,19 +400,6 @@ const TVDetail: React.FC = () => {
               )}
 
               <div className="flex flex-wrap gap-3">
-                {trailer && (
-                  <button
-                    onClick={() => {
-                      trackEvent('cta_click', { label: 'trailer-open' });
-                      setWatchMode('trailer');
-                      setTrailerOpen(true);
-                    }}
-                    className="flex items-center gap-3 rounded-full border border-white/20 bg-white/5 px-7 py-4 text-sm font-black tracking-[0.1em] transition-all hover:border-gold/40 hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-gold/50 sm:px-9"
-                  >
-                    <Play size={18} fill="currentColor" aria-hidden="true" />
-                    WATCH TRAILER
-                  </button>
-                )}
                 <button
                   onClick={showSeries}
                   className="flex items-center gap-3 rounded-full bg-gradient-to-r from-gold to-ruby px-7 py-4 text-sm font-black tracking-[0.1em] text-background shadow-[0_14px_45px_rgba(232,198,106,0.22)] transition-transform hover:-translate-y-1 focus:outline-none focus:ring-2 focus:ring-gold/50 sm:px-9"
@@ -425,6 +456,7 @@ const TVDetail: React.FC = () => {
                               {season.name}
                             </option>
                           ))}
+                          {!playableSeasons.some(item => item.season_number === selectedSeason) ? <option value={selectedSeason}>Season {selectedSeason}</option> : null}
                         </select>
                       </label>
                       <label className="flex-1 text-xs font-black uppercase tracking-[0.2em] text-white/45">
@@ -456,6 +488,7 @@ const TVDetail: React.FC = () => {
                         </select>
                       </label>
                     </div>
+                    <EpisodeJump season={selectedSeason} episode={selectedEpisode} onSelect={(season, episode) => { setSelectedSeason(season); setSelectedEpisode(episode); }} />
                   </div>
 
                   {seasonLoading ? (
@@ -513,24 +546,39 @@ const TVDetail: React.FC = () => {
                     </div>
                   ) : null}
 
-                  <VideoPlayer
-                    key={`${selectedSeason}-${selectedEpisode}`}
-                    embed={true}
-                    src={
-                      getTVEmbedSources(
-                        details.id,
-                        selectedSeason,
-                        selectedEpisode,
-                      )[0].url
-                    }
-                    sources={getTVEmbedSources(
-                      details.id,
-                      selectedSeason,
-                      selectedEpisode,
-                    )}
-                    poster={getImageUrl(details.poster_path, 'w500')}
-                    title={`${details.name} - S${selectedSeason} E${selectedEpisode}${activeEpisode ? `: ${activeEpisode.name}` : ''}`}
-                  />
+                  {!playerOpen && (
+                    <button
+                      disabled={upcoming}
+                      onClick={() => setPlayerOpen(true)}
+                      className="mb-5 inline-flex items-center gap-3 rounded-full bg-gold px-7 py-3 text-xs font-black uppercase tracking-[0.12em] text-black hover:bg-white"
+                    >
+                      <Play size={17} fill="currentColor" aria-hidden="true" /> {upcoming ? releaseLabel(selectedAirDate!) : 'Play episode'}
+                    </button>
+                  )}
+                  <button className="mb-3 rounded-full border border-white/20 px-5 py-2 text-sm font-bold" disabled={upcoming} onClick={() => setShowDownload(true)}>{upcoming ? releaseLabel(selectedAirDate!) : 'Download episode'}</button><DownloadModal isOpen={showDownload} onClose={() => setShowDownload(false)} request={playbackRequest} title={details.name} sources={sourcesQuery.data || []} loading={sourcesQuery.isFetching} error={sourcesQuery.error?.message} onRetry={() => void sourcesQuery.refetch()} />
+                  {playerOpen && (
+                    <VideoPlayer
+                      mediaKey={`tv-${tvId}-${selectedSeason}-${selectedEpisode}`}
+                      sources={sourcesQuery.data ?? []}
+                      loading={sourcesQuery.isLoading}
+                      error={sourcesQuery.isError ? sourcesQuery.error.message : null}
+                      onRetry={() => sourcesQuery.refetch()}
+                      poster={activeEpisode?.still_path
+                        ? getImageUrl(activeEpisode.still_path, 'w500')
+                        : getImageUrl(details.poster_path, 'w500')}
+                      title={details.name}
+                      subtitle={`S${selectedSeason} E${selectedEpisode}${activeEpisode ? ` · ${activeEpisode.name}` : ''}`}
+                      kind="tv"
+                      season={selectedSeason}
+                      episode={selectedEpisode}
+                      hasNext={hasNextEpisode}
+                      hasPrev={hasPrevEpisode}
+                      nextTitle={nextEpisodeTitle}
+                      onNext={() => switchEpisode(1)}
+                      onPrev={() => switchEpisode(-1)}
+                      onClose={() => setPlayerOpen(false)}
+                    />
+                  )}
 
                   {!!seasonDetails?.episodes.length && (
                     <section className="mt-8">
@@ -708,12 +756,6 @@ const TVDetail: React.FC = () => {
         </div>
       </div>
 
-      <TrailerModal
-        isOpen={trailerOpen}
-        onClose={() => setTrailerOpen(false)}
-        videos={videos?.results || []}
-        title={details.name}
-      />
     </div>
   );
 };

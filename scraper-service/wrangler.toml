@@ -3,4 +3,6 @@ main = "src/index.ts"
 compatibility_date = "2026-10-01"
 
 [vars]
-SERVICE_VERSION = "1.0.0"
+SERVICE_VERSION = "1.0.1"
+RENDER_SCRAPER_URL = "https://cineverse-core.onrender.com"
+DIRECT_RESOLVERS = "true"

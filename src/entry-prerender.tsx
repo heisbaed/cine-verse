@@ -75,9 +75,11 @@ export async function renderPage(path: string): Promise<{
     } else if (path === '/upcoming') {
       await queryClient.fetchQuery({ queryKey: ['upcomingMovies'], queryFn: getUpcomingMovies });
     } else if (path === '/global') {
-      await queryClient.fetchQuery({
+      await queryClient.fetchInfiniteQuery({
         queryKey: ['globalMedia', 'movie', 'Hollywood'],
-        queryFn: () => discoverMovies({ with_original_language: 'en', sort_by: 'popularity.desc' }),
+        initialPageParam: 1,
+        queryFn: ({ pageParam }) => discoverMovies({ with_original_language: 'en', sort_by: 'popularity.desc', page: String(pageParam) }),
+        getNextPageParam: (lastPage: MovieResponse) => lastPage.page < Math.min(lastPage.total_pages, 500) ? lastPage.page + 1 : undefined,
       });
     }
   } catch (error) {

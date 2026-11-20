@@ -27,22 +27,12 @@ import { trackEvent } from '@/lib/siteTracking';
 const currentYear = new Date().getFullYear();
 const years = Array.from({ length: 50 }, (_, index) => currentYear - index);
 
-const languages = [
-  { code: '', name: 'All Languages' },
-  { code: 'en', name: 'English' },
-  { code: 'hi', name: 'Hindi' },
-  { code: 'ko', name: 'Korean' },
-  { code: 'ja', name: 'Japanese' },
-  { code: 'zh', name: 'Chinese' },
-  { code: 'fr', name: 'French' },
-  { code: 'de', name: 'German' },
-  { code: 'es', name: 'Spanish' },
-  { code: 'ar', name: 'Arabic' },
-  { code: 'tr', name: 'Turkish' },
-  { code: 'it', name: 'Italian' },
-  { code: 'yo', name: 'Yoruba' },
-  { code: 'sw', name: 'Swahili' },
-];
+const regions = [
+  ['ZA', 'South Africa'], ['NG', 'Nollywood'], ['en', 'English'],
+  ['hi', 'Hindi'], ['yo', 'Yoruba'], ['sw', 'Swahili'], ['ko', 'Korean'],
+  ['ja', 'Japanese'], ['zh', 'Chinese'], ['fr', 'French'], ['de', 'German'],
+  ['es', 'Spanish'], ['ar', 'Arabic'], ['tr', 'Turkish'], ['it', 'Italian'],
+] as const;
 
 const sortOptions = [
   { value: 'popularity.desc', label: 'Popularity (High to Low)' },
@@ -92,6 +82,11 @@ const sortCredits = (items: MediaItem[], sortBy: string): MediaItem[] => {
   return sorted;
 };
 
+const chipClass = (selected: boolean) =>
+  `shrink-0 rounded-full border px-4 py-2 text-sm font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-gold ${
+    selected ? 'border-gold/45 bg-gold/15 text-gold' : 'border-white/10 bg-white/5 text-white/70 hover:bg-white/10'
+  }`;
+
 const Explore: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const urlQuery = searchParams.get('q') || '';
@@ -102,7 +97,8 @@ const Explore: React.FC = () => {
   const [query, setQuery] = useState(urlQuery);
   const [selectedGenre, setSelectedGenre] = useState(urlGenre);
   const [year, setYear] = useState('');
-  const [language, setLanguage] = useState('');
+  const region = searchParams.get('region') || '';
+  const regionIsCountry = region === 'ZA' || region === 'NG';
   const [minRating, setMinRating] = useState('');
   const [sortBy, setSortBy] = useState('popularity.desc');
   const loadMoreRef = useRef<HTMLDivElement>(null);
@@ -173,6 +169,8 @@ const Explore: React.FC = () => {
     queryKey: ['genres', contentType],
     queryFn: contentType === 'tv' ? getTVGenres : getGenres,
     enabled: hasApiKey(),
+    staleTime: 1000 * 60 * 60,
+    gcTime: 1000 * 60 * 60 * 24,
   });
 
   const { data: peopleData, isFetching: peopleLoading } = useQuery({
@@ -198,7 +196,7 @@ const Explore: React.FC = () => {
       personId,
       selectedGenre,
       year,
-      language,
+      region,
       minRating,
       sortBy,
     ],
@@ -209,7 +207,7 @@ const Explore: React.FC = () => {
       if (personId) {
         const credits = await getPersonCombinedCredits(personId);
         const seen = new Set<number>();
-        let matchingCredits = credits.cast.filter((item) => {
+        let matchingCredits = [...credits.cast, ...credits.crew].filter((item) => {
           if (item.media_type !== contentType || seen.has(item.id)) return false;
           seen.add(item.id);
           return true;
@@ -225,9 +223,9 @@ const Explore: React.FC = () => {
             (item) => getMediaDate(item)?.split('-')[0] === year,
           );
         }
-        if (language) {
+        if (region && !regionIsCountry) {
           matchingCredits = matchingCredits.filter(
-            (item) => item.original_language === language,
+            (item) => item.original_language === region,
           );
         }
         if (minRating) {
@@ -247,9 +245,11 @@ const Explore: React.FC = () => {
       }
 
       if (debouncedQuery) {
-        return contentType === 'tv'
-          ? await searchTVShows(debouncedQuery, page)
-          : await searchMovies(debouncedQuery, page);
+        const [movies, shows] = await Promise.all([searchMovies(debouncedQuery, page), searchTVShows(debouncedQuery, page)]);
+        return { page, total_pages: Math.max(movies.total_pages, shows.total_pages), total_results: movies.total_results + shows.total_results,
+          results: [...movies.results.map((item) => ({ ...item, media_type: 'movie' as const })), ...shows.results.map((item) => ({ ...item, media_type: 'tv' as const }))]
+            .filter((item) => !selectedGenre || item.genre_ids.includes(Number(selectedGenre)))
+            .sort((a, b) => b.popularity - a.popularity) };
       }
 
       const params: Record<string, string> = {
@@ -262,14 +262,14 @@ const Explore: React.FC = () => {
           contentType === 'tv' ? 'first_air_date_year' : 'primary_release_year'
         ] = year;
       }
-      if (language) params.with_original_language = language;
+      if (region) params[regionIsCountry ? 'with_origin_country' : 'with_original_language'] = region;
       if (minRating) params['vote_average.gte'] = minRating;
       return contentType === 'tv'
         ? await discoverTVShows(params)
         : await discoverMovies(params);
     },
     getNextPageParam: (lastPage) =>
-      lastPage.page < lastPage.total_pages ? lastPage.page + 1 : undefined,
+      lastPage.page < Math.min(lastPage.total_pages, 500) ? lastPage.page + 1 : undefined,
     enabled: hasApiKey(),
   });
 
@@ -293,11 +293,8 @@ const Explore: React.FC = () => {
   const totalResults = searchResults?.pages[0]?.total_results || 0;
 
   return (
-    <div className="min-h-screen px-6 py-10">
+    <div className="mx-auto min-h-screen max-w-[100rem] px-4 py-7 sm:px-6 sm:py-10">
       <div className="mb-8">
-        <p className="mb-2 text-xs font-black uppercase tracking-[0.28em] text-gold">
-          Discover your next story
-        </p>
         <h1 className="text-4xl font-black sm:text-5xl">
           {personName
             ? `${contentType === 'tv' ? 'Series' : 'Movies'} featuring ${personName}`
@@ -341,7 +338,7 @@ const Explore: React.FC = () => {
         </button>
       </div>
 
-      <div className="mb-10 space-y-4 rounded-3xl border border-white/10 bg-surface p-6">
+      <div className="mb-7 space-y-4 rounded-3xl border border-white/10 bg-surface p-4 sm:p-6">
         {personId > 0 && (
           <div className="flex items-center justify-between rounded-2xl border border-gold/25 bg-gold/10 px-4 py-3">
             <div className="flex items-center gap-3">
@@ -418,20 +415,31 @@ const Explore: React.FC = () => {
           </div>
         )}
 
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
-          <select
-            value={selectedGenre}
-            onChange={(event) => setSelectedGenre(event.target.value)}
-            className="rounded-2xl border border-white/10 bg-background px-4 py-3 text-sm text-white transition-all focus:border-gold/50 focus:outline-none"
-            aria-label="Filter by genre"
-          >
-            <option value="">All Genres</option>
-            {genres.map((genre) => (
-              <option key={genre.id} value={genre.id.toString()}>
-                {genre.name}
-              </option>
+        <div className="space-y-3">
+          <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-1" role="group" aria-label="Genres">
+            {[{ id: '', name: 'All genres' }, ...genres].map((genre) => (
+              <button key={genre.id} type="button" aria-pressed={selectedGenre === String(genre.id)}
+                onClick={() => setSelectedGenre(String(genre.id))}
+                className={chipClass(selectedGenre === String(genre.id))}>{genre.name}</button>
             ))}
-          </select>
+          </div>
+          {!query.trim() && !personId && (
+            <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-1" role="group" aria-label="Around the world">
+              {([['', 'All regions'], ...regions] as const).map(([code, name]) => (
+                <button key={code} type="button" aria-pressed={region === code}
+                  onClick={() => {
+                    const next = new URLSearchParams(searchParams);
+                    if (code) next.set('region', code);
+                    else next.delete('region');
+                    setSearchParams(next);
+                  }}
+                  className={chipClass(region === code)}>{name}</button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {!query.trim() && <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
           <select
             value={year}
             onChange={(event) => setYear(event.target.value)}
@@ -442,18 +450,6 @@ const Explore: React.FC = () => {
             {years.map((value) => (
               <option key={value} value={value.toString()}>
                 {value}
-              </option>
-            ))}
-          </select>
-          <select
-            value={language}
-            onChange={(event) => setLanguage(event.target.value)}
-            className="rounded-2xl border border-white/10 bg-background px-4 py-3 text-sm text-white transition-all focus:border-gold/50 focus:outline-none"
-            aria-label="Filter by language"
-          >
-            {languages.map((item) => (
-              <option key={item.code} value={item.code}>
-                {item.name}
               </option>
             ))}
           </select>
@@ -482,7 +478,7 @@ const Explore: React.FC = () => {
               </option>
             ))}
           </select>
-        </div>
+        </div>}
       </div>
 
       {genresError && !genresData ? (
@@ -497,9 +493,9 @@ const Explore: React.FC = () => {
         />
       ) : isLoading ? (
         <MovieGrid movies={[]} isLoading={true} />
-      ) : media.length > 0 ? (
+      ) : media.length > 0 || hasNextPage ? (
         <>
-          <MovieGrid movies={media} />
+          {media.length > 0 && <MovieGrid movies={media} />}
           <div ref={loadMoreRef} className="flex min-h-32 items-center justify-center">
             {isFetchingNextPage ? (
               <div className="flex items-center gap-3 text-sm text-white/40">

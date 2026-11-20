@@ -1,16 +1,20 @@
 # Dependencies
 node_modules/
+research/
 
 # Build output
 dist/
+.prerender/
 
 # Env secrets (never commit real keys — see .env.example)
 .env
 .env.local
 .env.*.local
+.dev.vars
 
 # Firebase cache & runtime
 .firebase/
+.wrangler/
 *.log
 
 # Editor & OS

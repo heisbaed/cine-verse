@@ -77,6 +77,15 @@ export default defineConfig(({ isSsrBuild }) => ({
             },
           },
           {
+            urlPattern: /^https?:\/\/.*\/cineverse-offline\//,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'cineverse-offline-media-v1',
+              cacheableResponse: { statuses: [0, 200, 206] },
+              rangeRequests: true,
+            },
+          },
+          {
             urlPattern: /^https?:\/\/.*\.mp4(?:\?.*)?$/i,
             handler: 'CacheFirst',
             options: {

@@ -14,6 +14,14 @@ export interface StreamRecord {
   subtitles: SubtitleTrack[];
   source: string;
   expiresAt: number;
+  id?: string;
+  name?: string;
+  contentType?: 'hls' | 'progressive' | 'dash';
+}
+
+export interface ResolutionObserver {
+  onStream?: (stream: StreamRecord) => void;
+  onResult?: (result: 'ok' | 'empty' | 'unavailable') => void;
 }
 
 export interface Adapter {
@@ -30,4 +38,6 @@ export interface Env {
   TMDB_API_KEY?: string;
   LOCAL_SCRAPER_URL?: string;
   RENDER_SCRAPER_URL?: string;
+  DIRECT_RESOLVERS?: string;
+  PROXY_SECRET?: string;
 }

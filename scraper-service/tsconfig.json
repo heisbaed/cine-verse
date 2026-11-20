@@ -8,5 +8,5 @@
     "skipLibCheck": true,
     "types": ["@cloudflare/workers-types"]
   },
-  "include": ["src/**/*.ts", "test/**/*.ts"]
+  "include": ["src/index.ts", "src/types.ts", "src/signing.ts", "src/proxy.ts", "src/resolvers/**/*.ts", "src/adapters/upstreamA.ts", "test/**/*.ts"]
 }

@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { completeSeasonEpisodes, completeTVSeasons, needsEpisodeCompletion } from './catalogSeasons';
 import type {
   MovieDetails,
   TVDetails,
@@ -150,7 +151,7 @@ export const getMovieReviews = async (
 
 export const getTVDetails = async (tvId: number): Promise<TVDetails> => {
   const response = await tmdbApi.get(`/tv/${tvId}`);
-  return response.data;
+  return completeTVSeasons(response.data);
 };
 
 export const getTVExternalIds = async (tvId: number): Promise<ExternalIds> => {
@@ -189,29 +190,56 @@ export const getTVSeasonDetails = async (
   tvId: number,
   seasonNumber: number,
 ): Promise<SeasonDetails> => {
-  const response = await tmdbApi.get(`/tv/${tvId}/season/${seasonNumber}`);
-  return response.data;
+  let original: SeasonDetails | null = null;
+  try { original = (await tmdbApi.get(`/tv/${tvId}/season/${seasonNumber}`)).data; }
+  catch (error) { if ((error as { response?: { status?: number } }).response?.status !== 404) throw error; }
+  if (original && !needsEpisodeCompletion(tvId, seasonNumber, original.episodes.length)) return original;
+  const show = await getTVDetails(tvId);
+  const completed = await completeSeasonEpisodes(show, seasonNumber, original);
+  if (!completed) throw new Error('Episode details are not available yet.');
+  return completed;
 };
 
-export const searchMovies = async (
-  query: string,
-  page: number = 1,
-): Promise<MovieResponse> => {
-  const response = await tmdbApi.get('/search/movie', {
-    params: { query, page },
-  });
-  return response.data;
+// Search aliases improve discovery; records always retain the catalog's real IDs.
+const catalogQuery = (query: string) => {
+  const normalized = query.toLowerCase().replace(/[’']/g, '').replace(/\s+/g, ' ').trim();
+  const aliases: Record<string, string> = {
+    'all queens men': "All the Queen's Men", 'all the queens men': "All the Queen's Men",
+    'blood of legacy': 'Blood Legacy', 'the 4 of us': 'The Four of Us',
+  };
+  return aliases[normalized] ?? query.trim().replace(/['’]s(?=\s|$)/gi, '').replace(/\s+(movies|films|filmography)$/i, '').trim();
 };
-
-export const searchTVShows = async (
-  query: string,
-  page: number = 1,
-): Promise<TVResponse> => {
-  const response = await tmdbApi.get('/search/tv', {
-    params: { query, page },
-  });
-  return response.data;
-};
+const creditSearch = new Map<string, Promise<PersonCombinedCredits | null>>();
+async function matchingCredits(query: string): Promise<PersonCombinedCredits | null> {
+  const normalized = query.toLowerCase().replace(/[’']/g, '').trim();
+  if (normalized.length < 4) return null;
+  if (!creditSearch.has(normalized)) {
+    const pending = (async () => {
+      const { data } = await tmdbApi.get('/search/person', { params: { query } });
+      const person = data.results?.find((candidate: { name: string; id: number }) =>
+        candidate.name.toLowerCase().replace(/[’']/g, '') === normalized);
+      if (!person) return null;
+      return (await tmdbApi.get(`/person/${person.id}/combined_credits`)).data as PersonCombinedCredits;
+    })().catch(() => null);
+    creditSearch.set(normalized, pending);
+    if (creditSearch.size > 30) creditSearch.delete(creditSearch.keys().next().value!);
+  }
+  return creditSearch.get(normalized)!;
+}
+async function searchCatalog(kind: 'movie' | 'tv', query: string, page: number) {
+  const cleaned = catalogQuery(query);
+  const [response, credits] = await Promise.all([
+    tmdbApi.get(`/search/${kind}`, { params: { query: cleaned, page, include_adult: false } }),
+    page === 1 ? matchingCredits(cleaned) : Promise.resolve(null),
+  ]);
+  const extra = [...(credits?.cast ?? []), ...(credits?.crew ?? [])].filter((item) => item.media_type === kind);
+  const seen = new Set<number>();
+  return { ...response.data, results: [...response.data.results, ...extra].filter((item) => {
+    if (seen.has(item.id)) return false; seen.add(item.id); return true;
+  }) };
+}
+export const searchMovies = async (query: string, page = 1): Promise<MovieResponse> => searchCatalog('movie', query, page);
+export const searchTVShows = async (query: string, page = 1): Promise<TVResponse> => searchCatalog('tv', query, page);
 
 export const searchPeople = async (
   query: string,

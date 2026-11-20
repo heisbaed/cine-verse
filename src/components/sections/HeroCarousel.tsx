@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Download, Play } from 'lucide-react';
+import { Play } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { getImageUrl, getMovieCredits, getMovieVideos } from '@/api/tmdb';
 import TrailerModal from './TrailerModal';
@@ -53,9 +53,6 @@ const HeroCarousel: React.FC<HeroCarouselProps> = ({ movies }) => {
           <div className="mt-7 flex flex-wrap gap-3">
             <Link to={`/movie/${movie.id}?play=1`} className="inline-flex min-h-12 items-center gap-2 rounded-lg bg-gold px-5 text-xs font-black uppercase tracking-[0.12em] text-black transition-colors hover:bg-white">
               <Play size={16} fill="currentColor" /> Play movie
-            </Link>
-            <Link to={`/movie/${movie.id}?torrents=1`} className="inline-flex min-h-12 items-center gap-2 rounded-lg border border-gold/60 px-5 text-xs font-black uppercase tracking-[0.12em] text-gold transition-colors hover:bg-gold hover:text-black">
-              <Download size={16} /> Download torrent
             </Link>
             <button onClick={() => setTrailerOpen(true)} className="min-h-12 px-3 text-xs font-bold text-white/55 transition-colors hover:text-gold">Watch trailer</button>
           </div>

@@ -13,6 +13,16 @@ const Footer: React.FC = () => {
           <Clapperboard size={20} className="text-gold" aria-hidden="true" />
           <span className="text-lg font-bold text-gold">Cine-verse</span>
         </div>
+        <p className="mx-auto mb-5 max-w-lg text-sm leading-6 text-white/45">
+          Discover movies and TV series, explore cast and trailers, and keep a watchlist with Cine-verse.
+        </p>
+        <nav aria-label="Explore Cine-verse" className="mb-6 flex flex-wrap justify-center gap-x-5 gap-y-3 text-xs font-bold text-white/55">
+          <Link to="/" className="hover:text-gold">Home</Link>
+          <Link to="/explore" className="hover:text-gold">Explore movies and series</Link>
+          <Link to="/upcoming" className="hover:text-gold">Upcoming releases</Link>
+          <Link to="/global" className="hover:text-gold">Global cinema</Link>
+          <Link to="/download" className="hover:text-gold">Android apps</Link>
+        </nav>
         <p className="text-white/40 text-sm">
           Powered by{' '}
           <a

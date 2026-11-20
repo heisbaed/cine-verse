@@ -16,23 +16,19 @@ export interface AppRelease {
 // new browser_download_url here (and update version/fileSize).
 
 export const APP_RELEASE: AppRelease = {
-  version: '1.2.8',
-  buildNumber: '13',
-  fileSize: '24.1 MB',
+  version: '1.2.9',
+  buildNumber: '14',
+  fileSize: '24.3 MB',
   minAndroid: 'Android 7.0+ · 64-bit ARM',
   updatedAt: '20 November 2026',
   apkUrl:
-    'https://github.com/heisbaed/cine-verse/releases/download/v1.2.8/cine-verse-v1.2.8.apk',
-  apkFileName: 'cine-verse-v1.2.8.apk',
+    'https://github.com/heisbaed/cine-verse/releases/download/v1.2.9/cine-verse-v1.2.9.apk',
+  apkFileName: 'cine-verse-v1.2.9.apk',
   changelog: [
-    'Single-file MP4 export for saved downloads through the Android Save dialog',
-    'Background export with progress notification and cancellation',
-    'MP4 assembly while segments download, reused for later exports',
-    'Refreshed shared playback source transport and backend list',
-    'More resilient downloads with partial-segment retries and clearer errors',
-    'Lighter glass navigation with transparent content edges',
-    'Native player, captions and offline packages from 1.2.5 retained',
-    'Compatible automatic OTA patches for future interface fixes',
+    'Background downloads with notification progress and recovery after connection drops',
+    'Resume interrupted transfers from saved progress',
+    'More complete season and episode listings where guide data is available',
+    'Offline playback and single-file MP4 export from Downloads',
   ],
 };
 

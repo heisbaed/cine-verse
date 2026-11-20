@@ -27,7 +27,7 @@ const railItems = [
 ];
 
 const getInitialTheme = (): Theme =>
-  localStorage.getItem('cine-verse-theme') === 'light' ? 'light' : 'dark';
+  typeof window !== 'undefined' && localStorage.getItem('cine-verse-theme') === 'light' ? 'light' : 'dark';
 
 const Navbar: React.FC = () => {
   const navigate = useNavigate();
@@ -85,7 +85,7 @@ const Navbar: React.FC = () => {
             <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search" aria-label="Search movies and series" className="h-8 w-full rounded-md border border-white/5 bg-white/8 pl-9 pr-3 text-xs outline-none placeholder:text-white/40 focus:border-gold/50" />
           </form>
           <div className="ml-auto flex items-center gap-2">
-            <Link to="/download" className="inline-flex h-8 items-center gap-2 rounded-md bg-gold px-2.5 text-[10px] font-black uppercase tracking-wider text-black sm:px-3" aria-label="Download Android app"><Download size={14} /><span className="hidden sm:inline">Download app</span></Link>
+            <Link to="/download" className="inline-flex h-8 items-center gap-2 rounded-md bg-gold px-2.5 text-[10px] font-black uppercase tracking-wider text-black sm:px-3" aria-label="Download Android APK"><Download size={14} /><span className="hidden sm:inline">Get APK</span></Link>
             <button onClick={() => setTheme((current) => current === 'dark' ? 'light' : 'dark')} className="grid h-8 w-8 place-items-center rounded-md bg-white/8 text-white/60 hover:text-gold" aria-label="Switch theme">
               {theme === 'dark' ? <Sun size={14} /> : <Moon size={14} />}
             </button>

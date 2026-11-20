@@ -342,12 +342,15 @@ const parseSizeToBytes = (size: string): number => {
 // so browsers can call it directly with no CORS proxy.
 const getTorrentioPackages = async (
   imdbId?: string | null,
+  episode?: { season: number; episode: number },
 ): Promise<{ packages: TorrentPackage[]; indexOk: boolean }> => {
   const cleanId = imdbId?.toLowerCase().trim() || '';
   if (!/^tt\d+$/.test(cleanId)) return { packages: [], indexOk: false };
   try {
     const response = await fetchWithTimeout(
-      `https://torrentio.strem.fun/stream/movie/${cleanId}.json`,
+      episode
+        ? `https://torrentio.strem.fun/stream/series/${cleanId}:${episode.season}:${episode.episode}.json`
+        : `https://torrentio.strem.fun/stream/movie/${cleanId}.json`,
       12000,
     );
     if (!response.ok) return { packages: [], indexOk: false };
@@ -390,6 +393,17 @@ const getTorrentioPackages = async (
   } catch {
     return { packages: [], indexOk: false };
   }
+};
+
+export const getTVTorrentPackages = async (options: {
+  imdbId?: string | null;
+  season: number;
+  episode: number;
+}): Promise<TorrentResult> => {
+  if (!options.imdbId) throw new Error('Series download ID is unavailable.');
+  const result = await getTorrentioPackages(options.imdbId, options);
+  if (!result.indexOk) throw new Error('Episode download index is unavailable.');
+  return { packages: result.packages, bayAvailable: true };
 };
 
 export const getTorrentPackages = async (options: {
