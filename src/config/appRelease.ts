@@ -16,23 +16,23 @@ export interface AppRelease {
 // new browser_download_url here (and update version/fileSize).
 
 export const APP_RELEASE: AppRelease = {
-  version: '1.2.5',
-  buildNumber: '10',
-  fileSize: '23.9 MB',
+  version: '1.2.8',
+  buildNumber: '13',
+  fileSize: '24.1 MB',
   minAndroid: 'Android 7.0+ · 64-bit ARM',
-  updatedAt: '14 November 2026',
+  updatedAt: '20 November 2026',
   apkUrl:
-    'https://github.com/heisbaed/cine-verse/releases/download/v1.2.5/cine-verse-v1.2.5.apk',
-  apkFileName: 'cine-verse-v1.2.5.apk',
+    'https://github.com/heisbaed/cine-verse/releases/download/v1.2.8/cine-verse-v1.2.8.apk',
+  apkFileName: 'cine-verse-v1.2.8.apk',
   changelog: [
-    'Native full-screen player with quality, audio, captions and speed controls',
-    'Direct downloads with quality selection, including 1080p when available',
-    'Size checks run without blocking the Download button',
-    'Background downloads with pause, resume and progress notifications',
-    'Offline playback with saved subtitles when available',
-    'Redesigned Downloads tab, pink styling and sharper splash artwork',
-    'Library in Settings, with your account and Cine AI preserved',
-    'Resolver crash fixes and compatible automatic OTA patches',
+    'Single-file MP4 export for saved downloads through the Android Save dialog',
+    'Background export with progress notification and cancellation',
+    'MP4 assembly while segments download, reused for later exports',
+    'Refreshed shared playback source transport and backend list',
+    'More resilient downloads with partial-segment retries and clearer errors',
+    'Lighter glass navigation with transparent content edges',
+    'Native player, captions and offline packages from 1.2.5 retained',
+    'Compatible automatic OTA patches for future interface fixes',
   ],
 };
 

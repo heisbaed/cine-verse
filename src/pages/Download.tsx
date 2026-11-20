@@ -64,7 +64,7 @@ const DownloadPage: React.FC = () => {
               >
                 <Download size={15} aria-hidden="true" /> Download phone APK
               </a>
-              <a href="https://github.com/heisbaed/cine-verse/releases/tag/v1.2.5" target="_blank" rel="noopener noreferrer" className="mt-3 inline-flex min-h-8 items-center justify-center gap-1 text-[9px] font-bold uppercase tracking-wider text-white/45 transition-colors hover:text-gold sm:text-[10px]">
+              <a href="https://github.com/heisbaed/cine-verse/releases/tag/v1.2.8" target="_blank" rel="noopener noreferrer" className="mt-3 inline-flex min-h-8 items-center justify-center gap-1 text-[9px] font-bold uppercase tracking-wider text-white/45 transition-colors hover:text-gold sm:text-[10px]">
                 Phone release details <ExternalLink size={12} aria-hidden="true" />
               </a>
             </article>
