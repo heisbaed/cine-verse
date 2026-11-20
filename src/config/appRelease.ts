@@ -16,17 +16,17 @@ export interface AppRelease {
 // new browser_download_url here (and update version/fileSize).
 
 export const APP_RELEASE: AppRelease = {
-  version: '1.2.9',
-  buildNumber: '14',
+  version: '1.2.10',
+  buildNumber: '15',
   fileSize: '24.3 MB',
   minAndroid: 'Android 7.0+ · 64-bit ARM',
-  updatedAt: '20 November 2026',
+  updatedAt: '21 November 2026',
   apkUrl:
-    'https://github.com/heisbaed/cine-verse/releases/download/v1.2.9/cine-verse-v1.2.9.apk',
-  apkFileName: 'cine-verse-v1.2.9.apk',
+    'https://github.com/heisbaed/cine-verse/releases/download/v1.2.10/cine-verse-v1.2.10.apk',
+  apkFileName: 'cine-verse-v1.2.10.apk',
   changelog: [
-    'Background downloads with notification progress and recovery after connection drops',
-    'Resume interrupted transfers from saved progress',
+    'Removes the progress bar when a download finishes',
+    'Restores Android download progress when you reopen Cineverse',
     'More complete season and episode listings where guide data is available',
     'Offline playback and single-file MP4 export from Downloads',
   ],

@@ -112,3 +112,5 @@ Updated the local web Worker Vidnest v2 public-transport decoding value to match
 - Production build passed. This pass did not run playback or authenticated browser feature tests.
 - Website polish and analytics reconnect changes deployed. A read-only sample of 500 recent main-feed events contained 61 page views and 21 distinct session IDs. The dashboard now waits for the main feed before showing totals, so an empty launch feed cannot present a false zero for all platforms. A genuinely empty selection is labeled accordingly.
 - Removed the CinePet panel from the private analytics dashboard as requested. Main dashboard error handling and sign-in remain available.
+- Deployed the main-feed readiness correction and website pet removal to Firebase Hosting. The dashboard URL responds and the published build has no CinePet chunk. The signed-in dashboard remains for the user to verify.
+- Published and verified the 1.2.10 link on the live website download page. Its public GitHub APK SHA-256 matches the Expo artifact installed on the Samsung. The live deployment includes the main-feed guard and dashboard pet removal.
