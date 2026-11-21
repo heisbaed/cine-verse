@@ -131,3 +131,8 @@ Updated the local web Worker Vidnest v2 public-transport decoding value to match
 ## Single-file web downloads
 - Removed the in-page segment copier. Direct files use the browser downloader. A dedicated download service worker remuxes supported HLS video and default audio into one fragmented MP4 at the selected quality with bounded segment buffers and backpressure.
 - Chrome received one attachment named How to Lose a Guy in 10 Days.mp4. Closed the movie tab and verified the transfer grew from zero to 623,757 bytes, then cancelled the test. Full-length completion and other browsers were not tested.
+
+## Web downloads reporting unavailable files
+- Found two failure paths. A single segment request had no retry during MP4 assembly, and a second request for the same download address returned HTTP 410 after its one-use ticket was consumed.
+- Retry failed segment reads up to three times. Save the download recipe for six hours in browser storage and reconstruct the MP4 from the start when its URL is requested again. Keep the fetch event alive through conversion. The local ticket store contains metadata only.
+- Verified the production build in desktop Chrome with complete 5.42-second Iron Man and 10.43-second Other Mommy samples from the current streams. Injected a segment HTTP 503 for each. All four downloads (first and repeated URL for each title) completed and parsed as MP4 with readable video and audio packets. Full-length films were not downloaded.
