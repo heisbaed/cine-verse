@@ -150,7 +150,7 @@ export const getMovieReviews = async (
 };
 
 export const getTVDetails = async (tvId: number): Promise<TVDetails> => {
-  const response = await tmdbApi.get(`/tv/${tvId}`);
+  const response = await tmdbApi.get(`/tv/${tvId}`, { params: { append_to_response: 'external_ids' } });
   return completeTVSeasons(response.data);
 };
 
@@ -228,10 +228,14 @@ async function matchingCredits(query: string): Promise<PersonCombinedCredits | n
 }
 async function searchCatalog(kind: 'movie' | 'tv', query: string, page: number) {
   const cleaned = catalogQuery(query);
-  const [response, credits] = await Promise.all([
+  let [response, credits] = await Promise.all([
     tmdbApi.get(`/search/${kind}`, { params: { query: cleaned, page, include_adult: false } }),
     page === 1 ? matchingCredits(cleaned) : Promise.resolve(null),
   ]);
+  const corrected = cleaned.replace(/\bto loose\b/gi, 'to lose');
+  if (corrected !== cleaned && !response.data.total_results) {
+    response = await tmdbApi.get(`/search/${kind}`, { params: { query: corrected, page, include_adult: false } });
+  }
   const extra = [...(credits?.cast ?? []), ...(credits?.crew ?? [])].filter((item) => item.media_type === kind);
   const seen = new Set<number>();
   return { ...response.data, results: [...response.data.results, ...extra].filter((item) => {

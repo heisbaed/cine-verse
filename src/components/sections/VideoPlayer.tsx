@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { useQuery } from '@tanstack/react-query';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
   ArrowLeft,
@@ -21,12 +22,13 @@ import {
   X,
 } from 'lucide-react';
 import type Hls from 'hls.js';
-import { isScraperConfigured } from '@/api/scraper';
+import { fetchCatalogCaptions, isScraperConfigured } from '@/api/scraper';
 import { trackEvent } from '@/lib/siteTracking';
 import type { PlaybackSource } from '@/types/playback';
 
 interface VideoPlayerProps {
   mediaKey?: string;
+  imdbId?: string | null;
   src?: string;
   sources?: PlaybackSource[];
   poster?: string;
@@ -60,6 +62,7 @@ const SPEEDS = [0.75, 1, 1.25, 1.5, 2];
 
 const VideoPlayer: React.FC<VideoPlayerProps> = ({
   mediaKey,
+  imdbId,
   src,
   sources,
   poster,
@@ -145,16 +148,35 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   }, [sources, src]);
 
   const sourceKey = mediaKey ?? `${kind}:${title ?? ''}:${season ?? ''}:${episode ?? ''}`;
+  const catalogId = kind === 'tv' && imdbId && season != null && episode != null
+    ? `${imdbId}:${season}:${episode}` : kind === 'movie' ? imdbId : null;
+  const catalog = useQuery({
+    queryKey: ['subtitleCatalog', kind, catalogId],
+    queryFn: ({ signal }) => fetchCatalogCaptions(kind, catalogId!, signal),
+    enabled: Boolean(captionsOpen && catalogId),
+    staleTime: 10 * 60_000,
+    retry: 1,
+  });
   const sourcesRef = useRef(normalizedSources);
   sourcesRef.current = normalizedSources;
   const activeSource = normalizedSources[Math.min(activeIndex, normalizedSources.length - 1)];
-  const streamCaptions = embeddedSubs.length ? embeddedSubs : nativeSubs.map((track, index) => ({
-    index, name: track.label || track.language || `Captions ${index + 1}`,
-  }));
-  const captionTracks = [
-    ...(activeSource?.subtitles ?? []),
-    ...(localCaption?.key === sourceKey ? [localCaption] : []),
-  ];
+  const streamCaptions = [...embeddedSubs, ...nativeSubs.map((track, index) => ({
+    index: embeddedSubs.length + index, name: track.label || track.language || `Captions ${index + 1}`,
+  }))];
+  const captionTracks = useMemo(() => {
+    const tracks = [
+      ...(activeSource?.subtitles ?? []),
+      ...normalizedSources.filter(source => source !== activeSource).flatMap(source => source.subtitles),
+      ...(catalog.data ?? []),
+      ...(localCaption?.key === sourceKey ? [localCaption] : []),
+    ];
+    const seen = new Set<string>();
+    return tracks.filter(track => {
+      if (seen.has(track.url)) return false;
+      seen.add(track.url);
+      return true;
+    });
+  }, [activeSource, normalizedSources, catalog.data, localCaption, sourceKey]);
 
   const sameCaption = (label: string) => label.trim().toLowerCase() === captionChoice?.label.trim().toLowerCase();
   const exactFile = captionTracks.findIndex((track) => track.url === captionChoice?.url);
@@ -356,31 +378,12 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
-    let stallTimer: ReturnType<typeof setTimeout> | undefined;
-    let lastPosition = video.currentTime;
-    let lastWait = 0;
-    let waits = 0;
-    const clearStall = () => { clearTimeout(stallTimer); stallTimer = undefined; };
-    const watchForStall = (delay = 15_000) => {
-      if (stallTimer || !activeSource || activeSource.offline) return;
-      stallTimer = setTimeout(() => {
-        stallTimer = undefined;
-        if (video.ended || (video.paused && video.readyState >= 2)) return;
-        markFailed(activeSource.url);
-      }, delay);
-    };
-    watchForStall();
     const onTimeUpdate = () => {
-      if (video.currentTime > lastPosition + 0.1 && !video.seeking) {
-        lastPosition = video.currentTime;
-        clearStall();
-      }
       setCurrentTime(video.currentTime);
       if (!video.paused && Date.now() - trackingRef.current.last >= 10_000) pulse('media_progress');
     };
     const onDurationChange = () => setDuration(Number.isFinite(video.duration) ? video.duration : 0);
     const onPlay = () => {
-      if (video.readyState < 3) watchForStall();
       if (!trackingRef.current.started) {
         trackingRef.current.started = true;
         trackingRef.current.last = Date.now();
@@ -390,30 +393,23 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
       setBuffering(video.readyState < 3);
     };
     const onPause = () => {
-      clearStall();
       pulse('media_progress');
       setPlaying(false);
     };
     const onEnded = () => {
-      clearStall();
       pulse('media_end');
       setPlaying(false);
     };
     const onWaiting = () => {
       if (video.paused) return;
       setBuffering(true);
-      const now = Date.now();
-      waits = now - lastWait < 25_000 ? waits + 1 : 1;
-      lastWait = now;
-      watchForStall(waits >= 3 && !video.seeking ? 8_000 : 15_000);
     };
-    const onCanPlay = () => { clearStall(); setBuffering(false); };
-    const onSeeking = () => { lastPosition = -1; clearStall(); if (!video.paused) watchForStall(); };
+    const onCanPlay = () => setBuffering(false);
     const onProgress = () => {
       if (video.buffered.length > 0) setBuffered(video.buffered.end(video.buffered.length - 1));
     };
     const onError = () => {
-      if (activeSource) markFailed(activeSource.url);
+      if (activeSource && video.error && video.error.code !== MediaError.MEDIA_ERR_ABORTED) markFailed(activeSource.url);
     };
     video.addEventListener('timeupdate', onTimeUpdate);
     video.addEventListener('durationchange', onDurationChange);
@@ -423,11 +419,9 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
     video.addEventListener('waiting', onWaiting);
     video.addEventListener('canplay', onCanPlay);
     video.addEventListener('playing', onCanPlay);
-    video.addEventListener('seeking', onSeeking);
     video.addEventListener('progress', onProgress);
     video.addEventListener('error', onError);
     return () => {
-      clearStall();
       video.removeEventListener('timeupdate', onTimeUpdate);
       video.removeEventListener('durationchange', onDurationChange);
       video.removeEventListener('play', onPlay);
@@ -436,7 +430,6 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
       video.removeEventListener('waiting', onWaiting);
       video.removeEventListener('canplay', onCanPlay);
       video.removeEventListener('playing', onCanPlay);
-      video.removeEventListener('seeking', onSeeking);
       video.removeEventListener('progress', onProgress);
       video.removeEventListener('error', onError);
     };
@@ -451,11 +444,12 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
     const video = videoRef.current;
     if (!video) return;
     const update = () => {
-      if (hlsRef.current) return;
       const external = new Set(Array.from(video.querySelectorAll('track'), (element) => element.track));
       setNativeSubs(Array.from(video.textTracks).filter((track) =>
-        (track.kind === 'captions' || track.kind === 'subtitles') && !external.has(track)));
+        (track.kind === 'captions' || track.kind === 'subtitles') && !external.has(track) &&
+        !embeddedSubs.some(rendition => rendition.name === track.label)));
     };
+    update();
     video.addEventListener('loadedmetadata', update);
     video.textTracks.addEventListener('addtrack', update);
     video.textTracks.addEventListener('removetrack', update);
@@ -464,22 +458,26 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
       video.textTracks.removeEventListener('addtrack', update);
       video.textTracks.removeEventListener('removetrack', update);
     };
-  }, [mounted, activeSource?.url, retryCount]);
+  }, [mounted, activeSource?.url, retryCount, embeddedSubs]);
 
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
-    const tracks = Array.from(video.querySelectorAll('track'));
-    tracks.forEach((track, index) => {
-      track.track.mode = index === subtitleIndex ? 'showing' : 'disabled';
-    });
-    nativeSubs.forEach((track, index) => { track.mode = index === embeddedSubIndex ? 'showing' : 'disabled'; });
     const hls = hlsRef.current;
     if (hls) {
-      hls.subtitleDisplay = embeddedSubIndex >= 0;
-      hls.subtitleTrack = embeddedSubIndex;
+      const rendition = embeddedSubIndex < embeddedSubs.length ? embeddedSubIndex : -1;
+      if (hls.subtitleDisplay !== (rendition >= 0)) hls.subtitleDisplay = rendition >= 0;
+      if (hls.subtitleTrack !== rendition) hls.subtitleTrack = rendition;
     }
-  }, [mounted, subtitleIndex, embeddedSubIndex, embeddedSubs, nativeSubs, activeSource?.url, localCaption, sourceKey]);
+    // hls.js can disable every DOM text track when switching renditions.
+    // Apply browser and file selections after the HLS switch.
+    nativeSubs.forEach((track, index) => {
+      track.mode = embeddedSubs.length + index === embeddedSubIndex ? 'showing' : 'disabled';
+    });
+    Array.from(video.querySelectorAll('track')).forEach((element, index) => {
+      element.track.mode = index === subtitleIndex ? 'showing' : 'disabled';
+    });
+  }, [mounted, subtitleIndex, embeddedSubIndex, embeddedSubs, nativeSubs, activeSource?.url, captionTracks, sourceKey]);
 
   const loadCaptionFile = async (file: File) => {
     try {
@@ -634,6 +632,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   const bufferedProgress = duration > 0 ? (buffered / duration) * 100 : 0;
   const shownError = (!activeSource ? error : null) || sourceError;
   const unavailable = !loading && !shownError && normalizedSources.length === 0;
+  const showStatus = Boolean((loading && !activeSource) || unavailable || shownError);
 
   if (!mounted) return null;
 
@@ -647,7 +646,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
       aria-modal="true"
       aria-label={title || 'Video player'}
     >
-      {(loading && !activeSource) || unavailable || shownError ? (
+      {showStatus && (
         <div className="flex h-full flex-col items-center justify-center gap-4 px-8 text-center">
           {loading ? <LoaderCircle size={52} className="animate-spin text-gold" aria-hidden="true" /> : <Film size={52} className="text-ruby/60" aria-hidden="true" />}
           <p className="max-w-md text-sm text-white/70">
@@ -658,9 +657,10 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
             {onClose && <button type="button" onClick={onClose} className="rounded-full border border-white/20 px-5 py-2 text-xs font-black uppercase tracking-[0.12em] text-white/70 hover:border-white/50 hover:text-white">Close</button>}
           </div>
         </div>
-      ) : (
+      )}
         <div
           ref={containerRef}
+          hidden={showStatus}
           tabIndex={0}
           className="relative h-full w-full overflow-hidden bg-black outline-none"
           onMouseMove={armControls}
@@ -678,7 +678,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
             onLoadedData={() => setBuffering(false)}
           >
             {captionTracks.map((track, index) => (
-              <track key={track.url} kind="subtitles" src={track.url} label={track.label}
+              <track key={track.url} kind="subtitles" src={track.url} srcLang="und" label={`${track.label} (file)`}
                 onError={() => { if (subtitleIndex === index) setCaptionError('This subtitle track could not load.'); }}
                 onLoad={() => { if (subtitleIndex === index) setCaptionError(''); }} />
             ))}
@@ -795,7 +795,9 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
                       {streamCaptions.map((track) => <option key={`stream:${track.index}`} value={`stream:${track.index}`}>{track.name} (stream)</option>)}
                       {captionTracks.map((track, index) => <option key={track.url} value={`file:${index}`}>{track.label}</option>)}
                     </select>
-                    {!streamCaptions.length && !captionTracks.length && <p className="mt-2 text-xs text-white/60">No subtitles supplied by this source.</p>}
+                    {catalog.isFetching && <p role="status" className="mt-2 text-xs text-white/60">Finding subtitles…</p>}
+                    {catalog.isError && <button type="button" onClick={() => void catalog.refetch()} className="mt-2 text-xs text-gold">Retry subtitle lookup</button>}
+                    {!catalog.isFetching && !catalog.isError && !streamCaptions.length && !captionTracks.length && <p className="mt-2 text-xs text-white/60">No matching subtitles found.</p>}
                     {captionChoice && subtitleIndex < 0 && embeddedSubIndex < 0 && (streamCaptions.length > 0 || captionTracks.length > 0) &&
                       <p className="mt-2 text-xs text-white/60">The selected track is unavailable on this source.</p>}
                     {captionError && <p role="status" className="mt-2 text-xs text-ruby">{captionError}</p>}
@@ -827,8 +829,14 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
                       <p className="mb-2 text-[10px] font-black uppercase tracking-[0.2em] text-white/35">Source</p>
                       <div className="mb-5 flex flex-col gap-1">
                         {normalizedSources.map((source, index) => (
-                          <button key={`${source.id}-${source.url}`} type="button" disabled={failedUrls.has(source.url)} onClick={() => { resumeAt.current = videoRef.current?.currentTime ?? 0; setActiveIndex(index); }} className={`flex items-center justify-between rounded-lg px-3 py-2 text-left text-xs font-bold disabled:opacity-35 ${index === activeIndex ? 'bg-gold/15 text-gold' : 'text-white/65 hover:bg-white/5'}`}>
-                            <span className="truncate">Cineverse {index + 1} · {source.quality}</span>
+                          <button key={`${source.id}-${source.url}`} type="button" onClick={() => {
+                            resumeAt.current = videoRef.current?.currentTime || resumeAt.current;
+                            if (failedRef.current.delete(source.url)) setFailedUrls(new Set(failedRef.current));
+                            if (index === activeIndex) setRetryCount(count => count + 1);
+                            setActiveIndex(index);
+                            setSourceError(null);
+                          }} className={`flex items-center justify-between rounded-lg px-3 py-2 text-left text-xs font-bold ${index === activeIndex ? 'bg-gold/15 text-gold' : 'text-white/65 hover:bg-white/5'}`}>
+                            <span className="truncate">Cineverse {index + 1} · {source.quality}{failedUrls.has(source.url) ? ' · Retry' : ''}</span>
                             {index === activeIndex && <Check size={15} aria-hidden="true" />}
                           </button>
                         ))}
@@ -850,7 +858,6 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
             )}
           </AnimatePresence>
         </div>
-      )}
     </motion.div>,
     document.body,
   );

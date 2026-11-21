@@ -86,6 +86,7 @@ export interface SeasonDetails extends Season {
 }
 
 export interface TVDetails extends TVShow {
+  external_ids?: ExternalIds;
   tagline: string;
   status: string;
   type: string;

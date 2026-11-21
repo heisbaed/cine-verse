@@ -116,8 +116,9 @@ const MovieDetail: React.FC = () => {
       {showPlayer && (
         <VideoPlayer
           mediaKey={`movie-${movieId}`}
+          imdbId={movie.imdb_id}
           sources={sourcesQuery.data ?? []}
-          loading={sourcesQuery.isLoading}
+          loading={sourcesQuery.isFetching}
           error={sourcesQuery.isError ? sourcesQuery.error.message : null}
           onRetry={() => sourcesQuery.refetch()}
           poster={getImageUrl(movie.backdrop_path, 'w1280')}

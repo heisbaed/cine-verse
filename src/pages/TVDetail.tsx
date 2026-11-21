@@ -566,8 +566,9 @@ const TVDetail: React.FC = () => {
                   {playerOpen && (
                     <VideoPlayer
                       mediaKey={`tv-${tvId}-${selectedSeason}-${selectedEpisode}`}
+                      imdbId={details.external_ids?.imdb_id}
                       sources={sourcesQuery.data ?? []}
-                      loading={sourcesQuery.isLoading}
+                      loading={sourcesQuery.isFetching}
                       error={sourcesQuery.isError ? sourcesQuery.error.message : null}
                       onRetry={() => sourcesQuery.refetch()}
                       poster={activeEpisode?.still_path

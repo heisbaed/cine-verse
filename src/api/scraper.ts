@@ -17,6 +17,18 @@ function scraperBase(): string {
 
 export const isScraperConfigured = (): boolean => Boolean(scraperBase());
 
+export async function fetchCatalogCaptions(kind: 'movie' | 'tv', id: string, signal: AbortSignal): Promise<SubtitleSource[]> {
+  const response = await fetch(new URL(`/captions/${kind === 'tv' ? 'series' : 'movie'}/${encodeURIComponent(id)}`, scraperBase()), { signal });
+  if (!response.ok) throw new Error('Subtitle lookup is temporarily unavailable.');
+  const tracks = await response.json() as { lang: string; version: number; url: string }[];
+  const names = new Intl.DisplayNames(['en'], { type: 'language' });
+  return tracks.map(({ lang, version, url }) => {
+    let label = lang;
+    try { label = names.of(lang) || lang; } catch { /* Preserve provider language labels. */ }
+    return { url, label: version > 1 ? `${label} · ${version}` : label };
+  });
+}
+
 function streamPath(request: PlaybackRequest): string {
   if (request.kind === 'movie') return `/stream/movie/${request.tmdbId}`;
   return `/stream/tv/${request.tmdbId}/${request.season}/${request.episode}`;

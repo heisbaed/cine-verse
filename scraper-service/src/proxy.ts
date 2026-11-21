@@ -88,21 +88,21 @@ export async function handleProxyRequest(request: Request, env: Env): Promise<Re
       } else return errorResponse(422, 'Unsupported subtitle format.');
     }
 
-    const headers: Record<string, string> = { ...CORS_HEADERS };
+    const headers = new Headers(CORS_HEADERS);
     for (const name of PASSTHROUGH_HEADERS) {
       if ((playlist || caption) && name === 'content-length') continue;
       const value = upstream.headers.get(name);
-      if (value) headers[name] = value;
+      if (value) headers.set(name, value);
     }
     if (request.method !== 'HEAD' && playlist) {
-      headers['Content-Type'] = 'application/vnd.apple.mpegurl; charset=utf-8';
+      headers.set('Content-Type', 'application/vnd.apple.mpegurl; charset=utf-8');
     } else if (caption) {
-      headers['Content-Type'] = 'text/vtt; charset=utf-8';
+      headers.set('Content-Type', 'text/vtt; charset=utf-8');
     } else if (!playlist && (!contentType || /^image\//i.test(contentType))) {
-      headers['Content-Type'] = 'video/mp2t';
+      headers.set('Content-Type', 'video/mp2t');
     }
-    headers['Accept-Ranges'] = upstream.headers.get('Accept-Ranges') || (playlist ? 'none' : 'bytes');
-    headers['Cache-Control'] = 'public, max-age=300';
+    headers.set('Accept-Ranges', upstream.headers.get('Accept-Ranges') || (playlist || caption ? 'none' : 'bytes'));
+    headers.set('Cache-Control', 'public, max-age=300');
 
     return new Response(body, { status: upstream.status, headers });
   } catch {

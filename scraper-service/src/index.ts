@@ -7,6 +7,7 @@ import { handleProxyRequest } from './proxy';
 import { resolveDirectSources } from './resolvers';
 import { signMediaUrl } from './signing';
 import { regionalSeasonGuide } from './catalog';
+import { subtitleCatalog } from './subtitleCatalog';
 import type { Env, MediaRequest, StreamRecord, ResolutionObserver } from './types';
 
 const app = new Hono<{ Bindings: Env }>();
@@ -24,6 +25,7 @@ app.get('/catalog/tv/:tmdbId', async context => {
   } catch { return context.json({ error: 'Secondary catalog is temporarily unavailable', seasons: [] }, 503); }
 });
 app.get('/proxy', (context) => handleProxyRequest(context.req.raw, context.env));
+app.get('/captions/:kind/:id', c => subtitleCatalog(c.req.raw, c.env, c.req.param('kind'), c.req.param('id')));
 app.get('/download', (context) => handleDownloadRequest(context.req.raw, context.env));
 app.get('/media/:id/master.m3u8', (context) => handleMediaMaster(context.req.raw, context.env, context.req.param('id')));
 app.get('/media/:id/seg/:index', (context) => handleMediaPart(context.req.raw, context.env, context.req.param('id'), 'seg', context.req.param('index')));
