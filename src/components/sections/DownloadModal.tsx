@@ -91,7 +91,7 @@ export default function DownloadModal({ isOpen, onClose, request, title, sources
   };
 
   return (
-    <div className="fixed inset-0 z-[100] grid place-items-center bg-black/75 p-4 backdrop-blur-sm"
+    <div className="media-dialog media-on-dark fixed inset-0 z-[100] grid place-items-center bg-black/65 p-4 backdrop-blur-sm"
       role="dialog" aria-modal="true" aria-label={`Download ${title}`}
       onKeyDown={(event) => { if (event.key === 'Escape') onClose(); }}>
       <section className="flex max-h-[90dvh] w-full max-w-md flex-col rounded-3xl border border-white/15 bg-[#141217] p-5 text-white shadow-2xl sm:p-6">
@@ -105,13 +105,13 @@ export default function DownloadModal({ isOpen, onClose, request, title, sources
           </button>
         </div>
 
-        <div className="my-4 min-h-0 overflow-auto divide-y divide-white/10">
+        <div className="quality-list my-4 flex min-h-0 flex-col gap-1 overflow-auto">
           {choices.map((item) => (
-            <label key={item.url} className="flex min-h-12 cursor-pointer items-center gap-3 py-2">
+            <label key={item.url} className="flex min-h-12 cursor-pointer items-center gap-3 rounded-xl border border-transparent px-3 py-2 has-checked:border-gold/70 has-checked:bg-gold/10 focus-within:outline-2 focus-within:outline-gold">
               <input type="radio" name="download-quality" disabled={busy} checked={choice?.url === item.url}
                 onChange={() => setSelected(item.url)} className="accent-gold" />
               <span className="flex-1 text-sm font-semibold">{item.quality}</span>
-              <span className="text-xs text-white/55">{item.size ? `${(item.size / 1e6).toFixed(1)} MB` : 'Size unavailable'}</span>
+              <span className="text-xs text-white/75">{item.size ? `${(item.size / 1e6).toFixed(1)} MB` : 'Size unavailable'}</span>
             </label>
           ))}
           {!choices.length && <p className="py-3 text-sm text-white/65">{finding ? 'Finding download qualities…' : error || 'No compatible download is available.'}</p>}

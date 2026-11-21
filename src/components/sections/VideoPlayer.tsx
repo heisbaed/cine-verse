@@ -641,7 +641,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-[200] bg-black text-white"
+      className="media-dialog media-on-dark fixed inset-0 z-[200] bg-black text-white"
       role="dialog"
       aria-modal="true"
       aria-label={title || 'Video player'}
@@ -775,7 +775,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
                 </div>
 
                 {captionsOpen && (
-                  <div className="absolute bottom-20 right-3 max-h-[70%] w-[calc(100%-1.5rem)] max-w-sm overflow-y-auto rounded-2xl border border-white/15 bg-[#111113]/95 p-4 shadow-xl backdrop-blur-xl sm:right-6">
+                  <div className="absolute bottom-20 right-3 max-h-[70%] w-[calc(100%-1.5rem)] max-w-sm overflow-y-auto rounded-2xl border border-white/15 bg-[#141217] p-4 shadow-xl sm:right-6">
                     <div className="mb-3 flex items-center justify-between">
                       <h3 className="text-sm font-bold">Subtitles</h3>
                       <button type="button" aria-label="Close subtitles" onClick={() => setCaptionsOpen(false)}><X size={19} /></button>
@@ -819,14 +819,14 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: 24 }}
                       onClick={(event) => event.stopPropagation()}
-                      className="absolute bottom-0 right-0 flex max-h-[80%] w-full max-w-sm flex-col overflow-y-auto border-l border-t border-white/10 bg-[#111113]/95 p-5 backdrop-blur-xl sm:bottom-20 sm:right-6 sm:rounded-2xl sm:border"
+                      className="absolute bottom-0 right-0 flex max-h-[80%] w-full max-w-sm flex-col overflow-y-auto border-l border-t border-white/15 bg-[#141217] p-5 shadow-xl sm:bottom-20 sm:right-6 sm:rounded-2xl sm:border"
                     >
                       <div className="mb-4 flex items-center justify-between">
                         <h3 className="text-sm font-black uppercase tracking-[0.18em] text-gold">Playback settings</h3>
                         <button type="button" onClick={() => setSettingsOpen(false)} className="text-white/50 hover:text-white" aria-label="Close settings"><X size={19} aria-hidden="true" /></button>
                       </div>
 
-                      <p className="mb-2 text-[10px] font-black uppercase tracking-[0.2em] text-white/35">Source</p>
+                      <p className="mb-2 text-xs font-semibold text-white/75">Source</p>
                       <div className="mb-5 flex flex-col gap-1">
                         {normalizedSources.map((source, index) => (
                           <button key={`${source.id}-${source.url}`} type="button" onClick={() => {
@@ -842,9 +842,20 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
                         ))}
                       </div>
 
-                      {levels.length > 0 && <><p className="mb-2 text-xs text-white/50">Quality</p><div className="mb-5 flex flex-wrap gap-2">{[{ index: -1, height: 0, bitrate: 0 }, ...levels].map((level) => <button key={level.index} className={`rounded-lg border px-3 py-2 text-xs ${quality === level.index ? 'text-gold border-gold' : 'border-white/15 text-white/70'}`} onClick={() => { setQuality(level.index); if (hlsRef.current) hlsRef.current.nextLevel = level.index; }}>{level.index === -1 ? 'Auto' : level.height ? `${level.height}p` : `${Math.round(level.bitrate / 1000)} kbps`}</button>)}</div></>}
+                      {levels.length > 0 && <>
+                        <p className="mb-2 text-xs font-semibold text-white/75">Quality</p>
+                        <div className="mb-5 flex flex-wrap gap-2">
+                          {[{ index: -1, height: 0, bitrate: 0 }, ...levels].map((level) => (
+                            <button key={level.index} type="button" aria-pressed={quality === level.index}
+                              className="rounded-lg border border-white/25 px-3 py-2 text-xs font-semibold text-white hover:border-gold aria-pressed:border-gold aria-pressed:bg-gold aria-pressed:text-black"
+                              onClick={() => { setQuality(level.index); if (hlsRef.current) hlsRef.current.nextLevel = level.index; }}>
+                              {level.index === -1 ? 'Auto' : level.height ? `${level.height}p` : `${Math.round(level.bitrate / 1000)} kbps`}
+                            </button>
+                          ))}
+                        </div>
+                      </>}
                       {audioTracks.length > 1 && <label className="mb-5 text-xs text-white/60">Audio<select className="mt-2 w-full rounded-lg bg-black p-3" value={audioIndex} onChange={(e) => { const index = Number(e.target.value); setAudioIndex(index); if (hlsRef.current) hlsRef.current.audioTrack = index; }}>{audioTracks.map((track) => <option key={track.index} value={track.index}>{track.name}</option>)}</select></label>}
-                      <p className="mb-2 text-[10px] font-black uppercase tracking-[0.2em] text-white/35">Speed</p>
+                      <p className="mb-2 text-xs font-semibold text-white/75">Speed</p>
                       <div className="mb-5 flex flex-wrap gap-2">
                         {SPEEDS.map((value) => (
                           <button key={value} type="button" onClick={() => setSpeed(value)} className={`rounded-lg border px-3 py-1.5 text-[11px] font-black ${speed === value ? 'border-gold bg-gold text-black' : 'border-white/15 text-white/60 hover:border-gold/50 hover:text-gold'}`}>{value}x</button>

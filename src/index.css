@@ -158,6 +158,22 @@ body {
   color: var(--color-white);
 }
 
+.media-dialog {
+  color-scheme: dark;
+  --color-gold: #e3bd68;
+  --color-ruby: #ff8596;
+}
+
+.media-dialog :is(select, option) {
+  color: var(--color-white);
+  background-color: #1e1c22;
+}
+
+.media-dialog .quality-list {
+  scrollbar-color: #706c74 #141217;
+  scrollbar-width: thin;
+}
+
 .ambient-light {
   opacity: 0.38;
   background:

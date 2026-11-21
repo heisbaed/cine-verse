@@ -123,3 +123,7 @@ Updated the local web Worker Vidnest v2 public-transport decoding value to match
 - The proxy now sends a single content type for rewritten playlists and captions. Verified the deployed Worker (1a386eed-7cb4-4082-9e65-1d158d092cd2) served English WebVTT with timed cues for How to Lose a Guy in 10 Days (16 languages listed) and Game of Thrones S1E1 (25). A TV playlist and the first bytes of its media segment were accessible.
 - Inimba S2E1 and All the Queen’s Men S5E15 each returned zero streams and zero catalog caption files in this sample. All 17 stream checks reported failure for each episode. Browser playback and caption timing remain for the user to verify.
 - Firebase Hosting deployment completed. The live player bundle matched the production build byte for byte.
+
+## Download picker contrast
+- Fixed the dark download and playback dialogs inheriting near-black text and a light native control scheme when the site is in light mode. The selected download row now has a gold border, and the player quality selector has a filled active state.
+- Built and deployed Firebase hosting:mainsite. Opened How to Lose a Guy in 10 Days on the live site in Chrome. Verified the download heading and resolution labels render as #f8f4ea against #141217 in both themes. Captured the light-mode sheet with 1080p, 720p and 480p visible.
