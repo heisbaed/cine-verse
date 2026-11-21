@@ -33,7 +33,7 @@ export default defineConfig(({ isSsrBuild }) => ({
       workbox: {
         cleanupOutdatedCaches: true,
         navigateFallback: '/app.html',
-        navigateFallbackDenylist: [/^\/__\//],
+        navigateFallbackDenylist: [/^\/__\//, /^\/media-download\//],
         globPatterns: ['**/*.{js,css,html,svg}'],
         // Firebase returns HTTP 404 for this file, so precaching it would
         // reject the entire service-worker installation.
@@ -98,6 +98,12 @@ export default defineConfig(({ isSsrBuild }) => ({
       },
     }),
   ],
+  build: isSsrBuild ? {} : {
+    rollupOptions: {
+      input: { index: path.resolve(__dirname, 'index.html'), downloadWorker: path.resolve(__dirname, 'src/media-download/worker.ts') },
+      output: { entryFileNames: chunk => chunk.name === 'downloadWorker' ? 'media-download/worker.js' : 'assets/[name]-[hash].js' },
+    },
+  },
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),

@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { Download, X } from 'lucide-react';
-import { fileChoices, saveWebVideo, type FileChoice } from '@/api/webDownload';
+import { fileChoices, type FileChoice } from '@/api/webDownload';
 import type { PlaybackRequest, PlaybackSource } from '@/types/playback';
+
+import { downloadSourceAsFile } from '@/api/browserDownload';
 
 interface Props {
   isOpen: boolean;
@@ -15,8 +17,7 @@ interface Props {
 }
 
 function sortChoices(choices: FileChoice[]) {
-  return [...choices].sort((a, b) => Number(Boolean(a.blocked)) - Number(Boolean(b.blocked))
-    || (parseInt(b.quality) || 0) - (parseInt(a.quality) || 0));
+  return [...choices].sort((a, b) => (parseInt(b.quality) || 0) - (parseInt(a.quality) || 0));
 }
 
 export default function DownloadModal({ isOpen, onClose, request, title, sources, loading, error, onRetry }: Props) {
@@ -25,10 +26,8 @@ export default function DownloadModal({ isOpen, onClose, request, title, sources
   const [pending, setPending] = useState(0);
   const [message, setMessage] = useState('');
   const [busy, setBusy] = useState(false);
-  const [bytes, setBytes] = useState(0);
   const scanned = useRef(new Set<string>());
   const probes = useRef<AbortController | null>(null);
-  const transfer = useRef<AbortController | null>(null);
   const requestKey = request ? `${request.kind}:${request.tmdbId}:${request.season}:${request.episode}` : '';
 
   useEffect(() => {
@@ -43,8 +42,6 @@ export default function DownloadModal({ isOpen, onClose, request, title, sources
     setBusy(false);
     return () => {
       controller.abort();
-      transfer.current?.abort();
-      transfer.current = null;
     };
   }, [isOpen, requestKey]);
 
@@ -66,27 +63,22 @@ export default function DownloadModal({ isOpen, onClose, request, title, sources
   }, [isOpen, requestKey, sources]);
 
   if (!isOpen) return null;
-  const choice = choices.find((item) => item.url === selected) ?? choices.find((item) => !item.blocked) ?? choices[0];
+  const choice = choices.find((item) => item.url === selected) ?? choices[0];
   const finding = Boolean(loading) || pending > 0;
 
   const save = async () => {
-    if (!choice || choice.blocked || transfer.current) return;
-    const controller = new AbortController();
-    transfer.current = controller;
+    const signal = probes.current?.signal;
+    if (!choice || busy || !signal) return;
     setSelected(choice.url);
     setBusy(true);
-    setBytes(0);
     setMessage('');
     try {
-      const saved = await saveWebVideo(choice, title, setBytes, controller.signal);
-      if (!controller.signal.aborted) setMessage(saved === undefined ? 'Download started in your browser.' : 'Download saved.');
-    } catch (caught) {
-      if (!controller.signal.aborted) setMessage(caught instanceof Error ? caught.message : 'Download interrupted.');
+      await downloadSourceAsFile(choice, title);
+      if (!signal.aborted) onClose();
+    } catch (error) {
+      if (!signal.aborted) setMessage(error instanceof Error ? error.message : 'Could not start the download.');
     } finally {
-      if (transfer.current === controller) {
-        transfer.current = null;
-        setBusy(false);
-      }
+      if (!signal.aborted) setBusy(false);
     }
   };
 
@@ -117,11 +109,9 @@ export default function DownloadModal({ isOpen, onClose, request, title, sources
           {!choices.length && <p className="py-3 text-sm text-white/65">{finding ? 'Finding download qualities…' : error || 'No compatible download is available.'}</p>}
         </div>
 
-        {choice?.blocked && <p className="mb-3 text-xs text-white/60">{choice.blocked}</p>}
-        {busy && <p role="status" className="mb-3 text-sm">Saving · {(bytes / 1e6).toFixed(1)} MB · Keep this tab open</p>}
         {message && <p role="status" className="mb-3 text-sm text-white/70">{message}</p>}
         <button type="button" className="flex w-full items-center justify-center gap-2 rounded-2xl bg-gold p-3.5 font-bold text-black disabled:opacity-40"
-          disabled={!choice || busy || Boolean(choice.blocked)} onClick={() => void save()}>
+          disabled={!choice || busy} onClick={() => void save()}>
           <Download size={18} />{busy ? 'Saving…' : 'Download'}
         </button>
         {!choices.length && !finding && onRetry && <button type="button" className="mt-3 self-center text-sm font-semibold text-gold"

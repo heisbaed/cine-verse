@@ -127,3 +127,7 @@ Updated the local web Worker Vidnest v2 public-transport decoding value to match
 ## Download picker contrast
 - Fixed the dark download and playback dialogs inheriting near-black text and a light native control scheme when the site is in light mode. The selected download row now has a gold border, and the player quality selector has a filled active state.
 - Built and deployed Firebase hosting:mainsite. Opened How to Lose a Guy in 10 Days on the live site in Chrome. Verified the download heading and resolution labels render as #f8f4ea against #141217 in both themes. Captured the light-mode sheet with 1080p, 720p and 480p visible.
+
+## Single-file web downloads
+- Removed the in-page segment copier. Direct files use the browser downloader. A dedicated download service worker remuxes supported HLS video and default audio into one fragmented MP4 at the selected quality with bounded segment buffers and backpressure.
+- Chrome received one attachment named How to Lose a Guy in 10 Days.mp4. Closed the movie tab and verified the transfer grew from zero to 623,757 bytes, then cancelled the test. Full-length completion and other browsers were not tested.
